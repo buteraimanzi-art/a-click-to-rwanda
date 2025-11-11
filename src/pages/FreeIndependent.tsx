@@ -7,15 +7,12 @@ import { Plus, Trash2, Download, BookOpen, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 
 const FreeIndependent = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDestination, setSelectedDestination] = useState('');
-  const [mapboxToken, setMapboxToken] = useState<string>('');
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -230,29 +227,9 @@ const FreeIndependent = () => {
         itinerary.
       </p>
 
-      {/* Mapbox Token Input - shown only if no token */}
-      {!mapboxToken && (
-        <Card className="p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">Enable Interactive Map</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Enter your Mapbox public token to see your destinations on an interactive map. 
-            Get your free token at <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a>
-          </p>
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="pk.eyJ1..."
-              value={mapboxToken}
-              onChange={(e) => setMapboxToken(e.target.value)}
-              className="flex-1"
-            />
-          </div>
-        </Card>
-      )}
-
       {/* Interactive Map */}
       <div className="mb-8">
-        <RwandaMap selectedLocations={mapLocations} mapboxToken={mapboxToken} />
+        <RwandaMap selectedLocations={mapLocations} />
       </div>
 
       <div className="bg-card rounded-lg shadow-lg p-6 mb-8">
