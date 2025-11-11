@@ -1,12 +1,12 @@
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons in Leaflet with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
@@ -42,62 +42,77 @@ const createCustomIcon = (type: 'destination' | 'hotel') => {
   });
 };
 
-// Component to fit map bounds to markers
-const MapController = ({ locations }: { locations: Location[] }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (locations.length > 0) {
-      const bounds = L.latLngBounds(
-        locations.map((loc) => [loc.latitude, loc.longitude] as L.LatLngTuple)
-      );
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
-    }
-  }, [locations, map]);
-
-  return null;
-};
-
-// Markers component
-const MapMarkers = ({ locations }: { locations: Location[] }) => {
-  return (
-    <>
-      {locations.map((location) => (
-        <Marker
-          key={location.id}
-          position={[location.latitude, location.longitude] as L.LatLngTuple}
-          icon={createCustomIcon(location.type)}
-        >
-          <Popup>
-            <div className="text-center">
-              <h3 className="font-bold text-base">{location.name}</h3>
-              <p className="text-sm text-muted-foreground capitalize">{location.type}</p>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </>
-  );
-};
-
 const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+
   const rwandaCenter: L.LatLngTuple = [-1.9403, 29.8739];
+
+  // Initialize map once
+  useEffect(() => {
+    if (mapRef.current || !mapContainerRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: rwandaCenter,
+      zoom: 8,
+      scrollWheelZoom: false,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update markers on selectedLocations change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    const valid = selectedLocations.filter(
+      (loc) => typeof loc.latitude === 'number' && typeof loc.longitude === 'number'
+    );
+
+    valid.forEach((loc) => {
+      const marker = L.marker([loc.latitude, loc.longitude], {
+        icon: createCustomIcon(loc.type),
+      })
+        .addTo(map)
+        .bindPopup(
+          `<div style="text-align:center">
+            <h3 style="margin:0;font-weight:700">${loc.name}</h3>
+            <p style="margin:4px 0 0 0;color:#666;text-transform:capitalize">${loc.type}</p>
+          </div>`
+        );
+
+      markersRef.current.push(marker);
+    });
+
+    // Fit bounds if we have markers
+    if (valid.length > 0) {
+      const bounds = L.latLngBounds(valid.map((l) => [l.latitude, l.longitude] as L.LatLngTuple));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
+    } else {
+      map.setView(rwandaCenter, 8);
+    }
+  }, [selectedLocations]);
 
   return (
     <div className="relative w-full h-[500px] rounded-lg overflow-hidden border shadow-lg">
-      <MapContainer
-        center={rwandaCenter}
-        zoom={8}
-        scrollWheelZoom={false}
-        style={{ height: '100%', width: '100%' }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapMarkers locations={selectedLocations} />
-        <MapController locations={selectedLocations} />
-      </MapContainer>
+      <div ref={mapContainerRef} className="absolute inset-0" />
     </div>
   );
 };
