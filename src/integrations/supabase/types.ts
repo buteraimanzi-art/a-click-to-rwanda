@@ -82,18 +82,24 @@ export type Database = {
           created_at: string | null
           description: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
         }
         Insert: {
           created_at?: string | null
           description: string
           id: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
         }
         Update: {
           created_at?: string | null
           description?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
         }
         Relationships: []
@@ -103,18 +109,24 @@ export type Database = {
           created_at: string | null
           destination_id: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
         }
         Insert: {
           created_at?: string | null
           destination_id: string
           id: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
         }
         Update: {
           created_at?: string | null
           destination_id?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
         }
         Relationships: []
