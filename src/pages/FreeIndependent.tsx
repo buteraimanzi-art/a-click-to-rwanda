@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,12 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Download, BookOpen, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import RwandaMap from '@/components/RwandaMap';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
 
 const FreeIndependent = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDestination, setSelectedDestination] = useState('');
+  const [mapboxToken, setMapboxToken] = useState<string>('');
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -63,6 +67,45 @@ const FreeIndependent = () => {
     },
     enabled: !!user,
   });
+
+  // Prepare map locations from itinerary
+  const mapLocations = useMemo(() => {
+    const locations: Array<{
+      id: string;
+      name: string;
+      latitude: number;
+      longitude: number;
+      type: 'destination' | 'hotel';
+    }> = [];
+
+    itinerary.forEach((item) => {
+      const destination = destinations?.find((d) => d.id === item.destination_id);
+      if (destination?.latitude && destination?.longitude) {
+        locations.push({
+          id: destination.id,
+          name: destination.name,
+          latitude: destination.latitude,
+          longitude: destination.longitude,
+          type: 'destination',
+        });
+      }
+
+      if (item.hotel_id) {
+        const hotel = hotels?.find((h) => h.id === item.hotel_id);
+        if (hotel?.latitude && hotel?.longitude) {
+          locations.push({
+            id: hotel.id,
+            name: hotel.name,
+            latitude: hotel.latitude,
+            longitude: hotel.longitude,
+            type: 'hotel',
+          });
+        }
+      }
+    });
+
+    return locations;
+  }, [itinerary, destinations, hotels]);
 
   const addMutation = useMutation({
     mutationFn: async () => {
@@ -186,6 +229,31 @@ const FreeIndependent = () => {
         Build your perfect adventure by adding destinations and services to your personalized
         itinerary.
       </p>
+
+      {/* Mapbox Token Input - shown only if no token */}
+      {!mapboxToken && (
+        <Card className="p-6 mb-6">
+          <h3 className="text-lg font-semibold mb-4">Enable Interactive Map</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Enter your Mapbox public token to see your destinations on an interactive map. 
+            Get your free token at <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">mapbox.com</a>
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="pk.eyJ1..."
+              value={mapboxToken}
+              onChange={(e) => setMapboxToken(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+        </Card>
+      )}
+
+      {/* Interactive Map */}
+      <div className="mb-8">
+        <RwandaMap selectedLocations={mapLocations} mapboxToken={mapboxToken} />
+      </div>
 
       <div className="bg-card rounded-lg shadow-lg p-6 mb-8">
         <h3 className="text-2xl font-bold mb-4 flex items-center">
