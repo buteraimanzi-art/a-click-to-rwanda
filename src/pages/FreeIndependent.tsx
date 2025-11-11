@@ -7,6 +7,7 @@ import { Plus, Trash2, Download, BookOpen, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
+import { calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
 
 const FreeIndependent = () => {
   const { user } = useApp();
@@ -428,20 +429,42 @@ const FreeIndependent = () => {
                   day: 'numeric'
                 });
 
+                const isTransfer = item.day_type === 'transfer';
+                let distance = null;
+                let travelTime = null;
+                if (isTransfer && origin?.latitude && origin?.longitude && destination?.latitude && destination?.longitude) {
+                  const R = 6371;
+                  const dLat = (destination.latitude - origin.latitude) * Math.PI / 180;
+                  const dLon = (destination.longitude - origin.longitude) * Math.PI / 180;
+                  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(origin.latitude * Math.PI / 180) * Math.cos(destination.latitude * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                  distance = Math.round(R * c);
+                  const totalMinutes = Math.round((distance / 45) * 60);
+                  travelTime = totalMinutes < 60 ? `${totalMinutes} min` : `${Math.floor(totalMinutes/60)}h ${totalMinutes%60 > 0 ? totalMinutes%60+'min' : ''}`.trim();
+                }
+
                 return `
                 <div class="day-item">
                   <div class="day-header">
                     <div>
                       <div class="day-number">Day ${index + 1}</div>
-                      <div class="day-title">${item.day_type === 'transfer' ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name || 'Destination'}</div>
+                      <div class="day-title">${isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name || 'Destination'}</div>
                       <div class="day-date">📅 ${formattedDate}</div>
+                      ${isTransfer && distance && travelTime ? `
+                        <div style="margin-top: 8px; font-size: 0.95em; opacity: 0.95;">
+                          <span style="margin-right: 15px;">📏 ${distance} km</span>
+                          <span>🕐 ${travelTime}</span>
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                   <div class="day-content">
-                    ${item.day_type === 'transfer' ? '<span class="transfer-badge">🚗 Transfer Day</span>' : ''}
+                    ${isTransfer ? '<span class="transfer-badge">🚗 Transfer Day</span>' : ''}
                     
                     <div class="detail-grid">
-                      ${item.day_type === 'transfer' ? `
+                      ${isTransfer ? `
                         <div class="detail-item">
                           <div class="detail-label">From</div>
                           <div class="detail-value">${origin?.name || 'Not specified'}</div>
@@ -789,10 +812,23 @@ const FreeIndependent = () => {
 
               const isTransfer = item.day_type === 'transfer';
 
+              // Calculate distance and travel time for transfer days
+              let distance: number | null = null;
+              let travelTime: string | null = null;
+              if (isTransfer && origin?.latitude && origin?.longitude && destination?.latitude && destination?.longitude) {
+                distance = calculateDistance(
+                  origin.latitude,
+                  origin.longitude,
+                  destination.latitude,
+                  destination.longitude
+                );
+                travelTime = estimateTravelTime(distance);
+              }
+
               return (
                 <div key={item.id} className="border border-border rounded-lg p-5 bg-background/50">
                   <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div className="flex-1">
                       <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
                       {isTransfer && (
                         <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
@@ -806,6 +842,16 @@ const FreeIndependent = () => {
                         <Calendar size={14} className="inline mr-1" />
                         {formattedDate}
                       </p>
+                      {isTransfer && distance && travelTime && (
+                        <div className="mt-2 flex gap-4 text-sm">
+                          <span className="text-primary font-medium">
+                            📏 {formatDistance(distance)}
+                          </span>
+                          <span className="text-primary font-medium">
+                            🕐 {travelTime}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <Button
                       variant="ghost"
