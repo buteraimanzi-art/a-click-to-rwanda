@@ -13,6 +13,10 @@ const FreeIndependent = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedDestination, setSelectedDestination] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedHotel, setSelectedHotel] = useState('');
+  const [selectedActivity, setSelectedActivity] = useState('');
+  const [dayNotes, setDayNotes] = useState('');
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -106,24 +110,28 @@ const FreeIndependent = () => {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      if (!user || !selectedDestination) throw new Error('Missing data');
-      const destination = destinations?.find((d) => d.id === selectedDestination);
-      if (!destination) throw new Error('Invalid destination');
-
+      if (!user || !selectedDestination || !selectedDate) throw new Error('Missing required data');
+      
       const { error } = await supabase.from('itineraries').insert({
         user_id: user.id,
-        destination_id: destination.id,
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
+        destination_id: selectedDestination,
+        hotel_id: selectedHotel || null,
+        activity_id: selectedActivity || null,
+        date: selectedDate,
+        notes: dayNotes,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['itinerary'] });
       setSelectedDestination('');
-      toast.success('Destination added to itinerary');
+      setSelectedDate('');
+      setSelectedHotel('');
+      setSelectedActivity('');
+      setDayNotes('');
+      toast.success('Day added to itinerary');
     },
-    onError: () => toast.error('Failed to add destination'),
+    onError: () => toast.error('Failed to add day'),
   });
 
   const updateMutation = useMutation({
@@ -229,25 +237,41 @@ const FreeIndependent = () => {
 
       {/* Interactive Map */}
       <div className="mb-8">
-        <RwandaMap selectedLocations={mapLocations} />
+        <h3 className="text-2xl font-bold mb-4">Your Journey Route</h3>
+        <RwandaMap selectedLocations={mapLocations} showRoutes={true} />
       </div>
 
       <div className="bg-card rounded-lg shadow-lg p-6 mb-8">
         <h3 className="text-2xl font-bold mb-4 flex items-center">
-          <Plus size={24} className="mr-2" /> Add to Itinerary
+          <Plus size={24} className="mr-2" /> Add Day to Itinerary
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-          <div className="flex flex-col">
-            <label htmlFor="destination-select" className="block text-sm font-medium mb-2">
-              Select a Destination:
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              <Calendar size={16} className="inline mr-1" /> Date *
             </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-2">Destination *</label>
             <select
-              id="destination-select"
               value={selectedDestination}
-              onChange={(e) => setSelectedDestination(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 border border-input rounded-md bg-background"
+              onChange={(e) => {
+                setSelectedDestination(e.target.value);
+                setSelectedHotel('');
+                setSelectedActivity('');
+              }}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              required
             >
-              <option value="">-- Choose a destination --</option>
+              <option value="">-- Choose destination --</option>
               {destinations?.map((dest) => (
                 <option key={dest.id} value={dest.id}>
                   {dest.name}
@@ -255,10 +279,64 @@ const FreeIndependent = () => {
               ))}
             </select>
           </div>
-          <Button onClick={() => addMutation.mutate()} disabled={!selectedDestination}>
-            Add Destination
-          </Button>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Hotel</label>
+            <select
+              value={selectedHotel}
+              onChange={(e) => setSelectedHotel(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              disabled={!selectedDestination}
+            >
+              <option value="">-- Choose hotel --</option>
+              {hotels
+                ?.filter((h) => h.destination_id === selectedDestination)
+                .map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Activity</label>
+            <select
+              value={selectedActivity}
+              onChange={(e) => setSelectedActivity(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              disabled={!selectedDestination}
+            >
+              <option value="">-- Choose activity --</option>
+              {activities
+                ?.filter((a) => a.destination_id === selectedDestination)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Notes</label>
+            <input
+              type="text"
+              value={dayNotes}
+              onChange={(e) => setDayNotes(e.target.value)}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              placeholder="Any special plans for this day..."
+            />
+          </div>
         </div>
+        
+        <Button 
+          onClick={() => addMutation.mutate()} 
+          disabled={!selectedDestination || !selectedDate}
+          className="mt-4 w-full md:w-auto"
+        >
+          <Plus size={20} className="mr-2" /> Add Day
+        </Button>
       </div>
 
       <div className="bg-card rounded-lg shadow-lg p-6">
@@ -275,132 +353,138 @@ const FreeIndependent = () => {
 
         {itinerary.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            Your itinerary is empty. Add destinations above to get started.
+            Your itinerary is empty. Add days above to get started.
           </p>
         ) : (
-          <div className="space-y-6">
-            {itinerary.map((item, index) => (
-              <div key={item.id} className="border border-border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="text-xl font-bold">
-                    {destinations?.find((d) => d.id === item.destination_id)?.name}
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate(item.id)}
-                  >
-                    <Trash2 size={18} />
-                  </Button>
-                </div>
+          <div className="space-y-4">
+            {itinerary.map((item, index) => {
+              const destination = destinations?.find((d) => d.id === item.destination_id);
+              const hotel = hotels?.find((h) => h.id === item.hotel_id);
+              const activity = activities?.find((a) => a.id === item.activity_id);
+              const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              return (
+                <div key={item.id} className="border border-border rounded-lg p-5 bg-background/50">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
+                      <h4 className="text-2xl font-bold text-primary">{destination?.name}</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        <Calendar size={14} className="inline mr-1" />
+                        {formattedDate}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(item.id)}
+                    >
+                      <Trash2 size={18} />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                      <input
+                        type="date"
+                        value={item.date || ''}
+                        onChange={(e) =>
+                          updateMutation.mutate({
+                            id: item.id,
+                            field: 'date',
+                            value: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Hotel</label>
+                      <select
+                        value={item.hotel_id || ''}
+                        onChange={(e) =>
+                          updateMutation.mutate({
+                            id: item.id,
+                            field: 'hotel_id',
+                            value: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="">Not selected</option>
+                        {hotels
+                          ?.filter((h) => h.destination_id === item.destination_id)
+                          .map((h) => (
+                            <option key={h.id} value={h.id}>
+                              {h.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
+                      <select
+                        value={item.activity_id || ''}
+                        onChange={(e) =>
+                          updateMutation.mutate({
+                            id: item.id,
+                            field: 'activity_id',
+                            value: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="">Not selected</option>
+                        {activities
+                          ?.filter((a) => a.destination_id === item.destination_id)
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {hotel && (
+                    <div className="text-sm mb-2">
+                      <span className="font-medium">Accommodation:</span> {hotel.name}
+                    </div>
+                  )}
+                  
+                  {activity && (
+                    <div className="text-sm mb-2">
+                      <span className="font-medium">Planned Activity:</span> {activity.name}
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-sm font-medium flex items-center mb-2">
-                      <Calendar size={16} className="mr-1" /> Date
-                    </label>
-                    <input
-                      type="date"
-                      value={item.date || ''}
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
+                    <textarea
+                      value={item.notes || ''}
                       onChange={(e) =>
                         updateMutation.mutate({
                           id: item.id,
-                          field: 'date',
+                          field: 'notes',
                           value: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      rows={2}
+                      placeholder="Add any special notes or requests for this day..."
                     />
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Hotel</label>
-                    <select
-                      value={item.hotel_id || ''}
-                      onChange={(e) =>
-                        updateMutation.mutate({
-                          id: item.id,
-                          field: 'hotel_id',
-                          value: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    >
-                      <option value="">Select hotel</option>
-                      {hotels
-                        ?.filter((h) => h.destination_id === item.destination_id)
-                        .map((h) => (
-                          <option key={h.id} value={h.id}>
-                            {h.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Car</label>
-                    <select
-                      value={item.car_id || ''}
-                      onChange={(e) =>
-                        updateMutation.mutate({
-                          id: item.id,
-                          field: 'car_id',
-                          value: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    >
-                      <option value="">Select car</option>
-                      {cars
-                        ?.filter((c) => c.destination_id === item.destination_id)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Activity</label>
-                    <select
-                      value={item.activity_id || ''}
-                      onChange={(e) =>
-                        updateMutation.mutate({
-                          id: item.id,
-                          field: 'activity_id',
-                          value: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    >
-                      <option value="">Select activity</option>
-                      {activities
-                        ?.filter((a) => a.destination_id === item.destination_id)
-                        .map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
                 </div>
-
-                <div className="mt-4">
-                  <label className="text-sm font-medium mb-2 block">Notes</label>
-                  <textarea
-                    value={item.notes || ''}
-                    onChange={(e) =>
-                      updateMutation.mutate({
-                        id: item.id,
-                        field: 'notes',
-                        value: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                    rows={2}
-                    placeholder="Add any special notes or requests..."
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -21,6 +21,7 @@ interface Location {
 
 interface RwandaMapProps {
   selectedLocations: Location[];
+  showRoutes?: boolean;
 }
 
 // Custom icons for different types
@@ -42,10 +43,11 @@ const createCustomIcon = (type: 'destination' | 'hotel') => {
   });
 };
 
-const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
+const RwandaMap = ({ selectedLocations, showRoutes = true }: RwandaMapProps) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const routeLineRef = useRef<L.Polyline | null>(null);
 
   const rwandaCenter: L.LatLngTuple = [-1.9403, 29.8739];
 
@@ -77,16 +79,20 @@ const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Clear existing markers
+    // Clear existing markers and routes
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
+    if (routeLineRef.current) {
+      routeLineRef.current.remove();
+      routeLineRef.current = null;
+    }
 
     // Add new markers
     const valid = selectedLocations.filter(
       (loc) => typeof loc.latitude === 'number' && typeof loc.longitude === 'number'
     );
 
-    valid.forEach((loc) => {
+    valid.forEach((loc, index) => {
       const marker = L.marker([loc.latitude, loc.longitude], {
         icon: createCustomIcon(loc.type),
       })
@@ -95,11 +101,25 @@ const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
           `<div style="text-align:center">
             <h3 style="margin:0;font-weight:700">${loc.name}</h3>
             <p style="margin:4px 0 0 0;color:#666;text-transform:capitalize">${loc.type}</p>
+            <p style="margin:4px 0 0 0;color:#999;font-size:12px">Stop ${index + 1}</p>
           </div>`
         );
 
       markersRef.current.push(marker);
     });
+
+    // Draw route line connecting locations in order
+    if (showRoutes && valid.length > 1) {
+      const routeCoordinates = valid.map((loc) => [loc.latitude, loc.longitude] as L.LatLngTuple);
+      
+      routeLineRef.current = L.polyline(routeCoordinates, {
+        color: '#145833',
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '10, 10',
+        lineJoin: 'round'
+      }).addTo(map);
+    }
 
     // Fit bounds if we have markers
     if (valid.length > 0) {
