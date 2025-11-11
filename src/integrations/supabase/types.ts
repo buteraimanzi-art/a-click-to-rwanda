@@ -137,11 +137,13 @@ export type Database = {
           car_id: string | null
           created_at: string | null
           date: string
+          day_type: string
           destination_id: string
           hotel_id: string | null
           id: string
           is_booked: boolean | null
           notes: string | null
+          origin_id: string | null
           updated_at: string | null
           user_id: string
         }
@@ -150,11 +152,13 @@ export type Database = {
           car_id?: string | null
           created_at?: string | null
           date: string
+          day_type?: string
           destination_id: string
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
           notes?: string | null
+          origin_id?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -163,11 +167,13 @@ export type Database = {
           car_id?: string | null
           created_at?: string | null
           date?: string
+          day_type?: string
           destination_id?: string
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
           notes?: string | null
+          origin_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
