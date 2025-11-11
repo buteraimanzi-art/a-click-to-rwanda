@@ -11,14 +11,16 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+interface Location {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  type: 'destination' | 'hotel';
+}
+
 interface RwandaMapProps {
-  selectedLocations: Array<{
-    id: string;
-    name: string;
-    latitude: number;
-    longitude: number;
-    type: 'destination' | 'hotel';
-  }>;
+  selectedLocations: Location[];
 }
 
 // Custom icons for different types
@@ -41,7 +43,7 @@ const createCustomIcon = (type: 'destination' | 'hotel') => {
 };
 
 // Component to fit map bounds to markers
-const FitBounds = ({ locations }: { locations: RwandaMapProps['selectedLocations'] }) => {
+const MapController = ({ locations }: { locations: Location[] }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -54,6 +56,28 @@ const FitBounds = ({ locations }: { locations: RwandaMapProps['selectedLocations
   }, [locations, map]);
 
   return null;
+};
+
+// Markers component
+const MapMarkers = ({ locations }: { locations: Location[] }) => {
+  return (
+    <>
+      {locations.map((location) => (
+        <Marker
+          key={location.id}
+          position={[location.latitude, location.longitude] as L.LatLngTuple}
+          icon={createCustomIcon(location.type)}
+        >
+          <Popup>
+            <div className="text-center">
+              <h3 className="font-bold text-base">{location.name}</h3>
+              <p className="text-sm text-muted-foreground capitalize">{location.type}</p>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
 };
 
 const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
@@ -71,23 +95,8 @@ const RwandaMap = ({ selectedLocations }: RwandaMapProps) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
-        {selectedLocations.map((location) => (
-          <Marker
-            key={location.id}
-            position={[location.latitude, location.longitude] as L.LatLngTuple}
-            icon={createCustomIcon(location.type)}
-          >
-            <Popup>
-              <div className="text-center">
-                <h3 className="font-bold text-base">{location.name}</h3>
-                <p className="text-sm text-muted-foreground capitalize">{location.type}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-        
-        {selectedLocations.length > 0 && <FitBounds locations={selectedLocations} />}
+        <MapMarkers locations={selectedLocations} />
+        <MapController locations={selectedLocations} />
       </MapContainer>
     </div>
   );
