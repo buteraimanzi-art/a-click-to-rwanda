@@ -138,7 +138,7 @@ export const getScheduledNotifications = (): ScheduledNotification[] => {
   }));
 };
 
-// Check and trigger due notifications
+// Check and trigger due notifications (1 hour before scheduled time)
 export const checkAndTriggerNotifications = () => {
   const notifications = getScheduledNotifications();
   const now = new Date();
@@ -146,8 +146,8 @@ export const checkAndTriggerNotifications = () => {
 
   notifications.forEach((notification) => {
     const timeDiff = notification.date.getTime() - now.getTime();
-    // Trigger if within 1 minute of scheduled time
-    if (timeDiff <= 60000 && timeDiff >= -60000) {
+    // Trigger if within 1 hour before scheduled time (3600000ms = 1 hour)
+    if (timeDiff <= 3600000 && timeDiff >= 0) {
       sendNotification(notification.title, notification.body, notification.tag);
       triggered.push(notification.tag);
     }
@@ -158,6 +158,22 @@ export const checkAndTriggerNotifications = () => {
     const remaining = notifications.filter((n) => !triggered.includes(n.tag));
     saveScheduledNotifications(remaining);
   }
+};
+
+// Send a test notification to verify device notifications are working
+export const sendTestNotification = async (): Promise<boolean> => {
+  const hasPermission = await requestNotificationPermission();
+  
+  if (hasPermission) {
+    sendNotification(
+      '🔔 Test Notification',
+      'Great! Your device notifications are working. You will receive reminders for your itinerary.',
+      'test-notification'
+    );
+    return true;
+  }
+  
+  return false;
 };
 
 // Set up interval to check notifications every minute

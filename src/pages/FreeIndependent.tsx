@@ -13,6 +13,7 @@ import {
   scheduleItineraryNotifications,
   saveScheduledNotifications,
   startNotificationChecker,
+  sendTestNotification,
 } from '@/lib/notifications';
 
 const FreeIndependent = () => {
@@ -34,6 +35,7 @@ const FreeIndependent = () => {
   const [lunchTime, setLunchTime] = useState('12:30');
   const [dinnerTime, setDinnerTime] = useState('19:00');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [testingNotification, setTestingNotification] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -47,6 +49,18 @@ const FreeIndependent = () => {
       setNotificationsEnabled(Notification.permission === 'granted');
     }
   }, []);
+
+  const handleTestNotification = async () => {
+    setTestingNotification(true);
+    const success = await sendTestNotification();
+    if (success) {
+      setNotificationsEnabled(true);
+      toast.success('Test notification sent! Check your device.');
+    } else {
+      toast.error('Please enable notifications in your browser settings.');
+    }
+    setTestingNotification(false);
+  };
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -862,25 +876,15 @@ const FreeIndependent = () => {
             <BookOpen size={24} className="mr-2" /> My Itinerary
           </h3>
           <div className="flex gap-2 flex-wrap">
-            {!notificationsEnabled && itinerary.length > 0 && (
-              <Button
-                onClick={async () => {
-                  const granted = await requestNotificationPermission();
-                  setNotificationsEnabled(granted);
-                  if (granted) {
-                    toast.success('Notifications enabled! Scheduling reminders...');
-                    const notifications = scheduleItineraryNotifications(itinerary, destinations || []);
-                    saveScheduledNotifications(notifications);
-                  } else {
-                    toast.error('Please enable notifications in your browser settings');
-                  }
-                }}
-                variant="outline"
-                size="sm"
-              >
-                <Bell size={18} className="mr-2" /> Enable Notifications
-              </Button>
-            )}
+            <Button
+              onClick={handleTestNotification}
+              variant="outline"
+              size="sm"
+              disabled={testingNotification}
+            >
+              <Bell size={18} className="mr-2" />
+              {testingNotification ? 'Sending...' : notificationsEnabled ? 'Test Notification' : 'Enable Notifications'}
+            </Button>
             {itinerary.length > 0 && (
               <Button 
                 onClick={() => {
