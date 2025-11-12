@@ -134,48 +134,60 @@ export type Database = {
       itineraries: {
         Row: {
           activity_id: string | null
+          breakfast_time: string | null
           car_id: string | null
           created_at: string | null
           date: string
           day_type: string
           destination_id: string
+          dinner_time: string | null
           hotel_id: string | null
           id: string
           is_booked: boolean | null
+          lunch_time: string | null
           notes: string | null
           origin_id: string | null
           updated_at: string | null
           user_id: string
+          wake_time: string | null
         }
         Insert: {
           activity_id?: string | null
+          breakfast_time?: string | null
           car_id?: string | null
           created_at?: string | null
           date: string
           day_type?: string
           destination_id: string
+          dinner_time?: string | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
+          lunch_time?: string | null
           notes?: string | null
           origin_id?: string | null
           updated_at?: string | null
           user_id: string
+          wake_time?: string | null
         }
         Update: {
           activity_id?: string | null
+          breakfast_time?: string | null
           car_id?: string | null
           created_at?: string | null
           date?: string
           day_type?: string
           destination_id?: string
+          dinner_time?: string | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
+          lunch_time?: string | null
           notes?: string | null
           origin_id?: string | null
           updated_at?: string | null
           user_id?: string
+          wake_time?: string | null
         }
         Relationships: []
       }

@@ -1,13 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
 import { calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
+import {
+  requestNotificationPermission,
+  scheduleItineraryNotifications,
+  saveScheduledNotifications,
+  startNotificationChecker,
+} from '@/lib/notifications';
 
 const FreeIndependent = () => {
   const { user } = useApp();
@@ -23,6 +29,24 @@ const FreeIndependent = () => {
   const [dayNotes, setDayNotes] = useState('');
   const [useSameHotel, setUseSameHotel] = useState(false);
   const [useSameCar, setUseSameCar] = useState(false);
+  const [wakeTime, setWakeTime] = useState('06:00');
+  const [breakfastTime, setBreakfastTime] = useState('07:00');
+  const [lunchTime, setLunchTime] = useState('12:30');
+  const [dinnerTime, setDinnerTime] = useState('19:00');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Start notification checker on mount
+  useEffect(() => {
+    const cleanup = startNotificationChecker();
+    return cleanup;
+  }, []);
+
+  // Check notification permission status on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -145,6 +169,10 @@ const FreeIndependent = () => {
         activity_id: selectedActivity || null,
         date: selectedDate,
         notes: dayNotes,
+        wake_time: wakeTime,
+        breakfast_time: breakfastTime,
+        lunch_time: lunchTime,
+        dinner_time: dinnerTime,
       });
       if (error) throw error;
     },
@@ -160,6 +188,10 @@ const FreeIndependent = () => {
       setDayNotes('');
       setUseSameHotel(false);
       setUseSameCar(false);
+      setWakeTime('06:00');
+      setBreakfastTime('07:00');
+      setLunchTime('12:30');
+      setDinnerTime('19:00');
       toast.success('Day added to itinerary');
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to add day'),
@@ -764,6 +796,51 @@ const FreeIndependent = () => {
             />
           </div>
         </div>
+
+        {/* Daily Schedule Times */}
+        <div className="mt-6 p-4 bg-muted/50 rounded-lg">
+          <h4 className="font-semibold mb-3 flex items-center">
+            <Bell size={18} className="mr-2" /> Daily Schedule
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1">Wake Time</label>
+              <input
+                type="time"
+                value={wakeTime}
+                onChange={(e) => setWakeTime(e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-input rounded bg-background"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Breakfast</label>
+              <input
+                type="time"
+                value={breakfastTime}
+                onChange={(e) => setBreakfastTime(e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-input rounded bg-background"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Lunch</label>
+              <input
+                type="time"
+                value={lunchTime}
+                onChange={(e) => setLunchTime(e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-input rounded bg-background"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1">Dinner</label>
+              <input
+                type="time"
+                value={dinnerTime}
+                onChange={(e) => setDinnerTime(e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-input rounded bg-background"
+              />
+            </div>
+          </div>
+        </div>
         
         <Button 
           onClick={() => addMutation.mutate()} 
@@ -780,15 +857,48 @@ const FreeIndependent = () => {
       </div>
 
       <div className="bg-card rounded-lg shadow-lg p-6">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <h3 className="text-2xl font-bold flex items-center">
             <BookOpen size={24} className="mr-2" /> My Itinerary
           </h3>
-          {itinerary.length > 0 && (
-            <Button onClick={handleDownload} variant="outline">
-              <Download size={20} className="mr-2" /> Download
-            </Button>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            {!notificationsEnabled && itinerary.length > 0 && (
+              <Button
+                onClick={async () => {
+                  const granted = await requestNotificationPermission();
+                  setNotificationsEnabled(granted);
+                  if (granted) {
+                    toast.success('Notifications enabled! Scheduling reminders...');
+                    const notifications = scheduleItineraryNotifications(itinerary, destinations || []);
+                    saveScheduledNotifications(notifications);
+                  } else {
+                    toast.error('Please enable notifications in your browser settings');
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <Bell size={18} className="mr-2" /> Enable Notifications
+              </Button>
+            )}
+            {itinerary.length > 0 && (
+              <Button 
+                onClick={() => {
+                  if (notificationsEnabled) {
+                    const notifications = scheduleItineraryNotifications(itinerary, destinations || []);
+                    saveScheduledNotifications(notifications);
+                    toast.success('Itinerary saved with notifications scheduled!');
+                  } else {
+                    toast.info('Enable notifications to receive reminders');
+                  }
+                  handleDownload();
+                }}
+                variant="outline"
+              >
+                <Download size={20} className="mr-2" /> Download & Save
+              </Button>
+            )}
+          </div>
         </div>
 
         {itinerary.length === 0 ? (
