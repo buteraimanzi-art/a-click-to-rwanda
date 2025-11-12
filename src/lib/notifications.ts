@@ -115,12 +115,25 @@ export const scheduleItineraryNotifications = (
 
 export const sendNotification = (title: string, body: string, tag: string) => {
   if (Notification.permission === 'granted') {
-    new Notification(title, {
+    const notification = new Notification(title, {
       body,
       tag,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-    });
+      requireInteraction: true, // Keep notification visible until user interacts
+      silent: false, // Enable system sound
+    } as NotificationOptions);
+
+    // Handle notification click
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+
+    // Try to vibrate if supported
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
   }
 };
 
