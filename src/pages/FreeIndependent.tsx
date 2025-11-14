@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -15,6 +15,29 @@ import {
   startNotificationChecker,
   sendTestNotification,
 } from '@/lib/notifications';
+
+// Helper function to get booking URL based on destination
+const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => {
+  const urls: Record<string, { destination: string; hotel?: string }> = {
+    akagera: {
+      destination: 'https://visitakagera.org/book-now/',
+      hotel: 'https://visitakagera.org/book-now/',
+    },
+    nyungwe: {
+      destination: 'https://visitnyungwe.org/book-now/',
+      hotel: 'https://visitnyungwe.org/book-now/',
+    },
+    volcanoes: {
+      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
+      hotel: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
+    },
+  };
+
+  const destUrls = urls[destinationId.toLowerCase()];
+  if (!destUrls) return null;
+  
+  return type === 'destination' ? destUrls.destination : (destUrls.hotel || destUrls.destination);
+};
 
 const FreeIndependent = () => {
   const { user } = useApp();
@@ -1069,8 +1092,21 @@ const FreeIndependent = () => {
                   </div>
 
                   {hotel && (
-                    <div className="text-sm mb-2">
-                      <span className="font-medium">Accommodation:</span> {hotel.name}
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Accommodation:</span> {hotel.name}
+                      </div>
+                      {getBookingUrl(item.destination_id, 'hotel') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel')!, '_blank')}
+                          className="ml-2"
+                        >
+                          <ExternalLink size={14} className="mr-1" />
+                          Book Hotel
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -1081,8 +1117,21 @@ const FreeIndependent = () => {
                   )}
                   
                   {activity && (
-                    <div className="text-sm mb-2">
-                      <span className="font-medium">Planned Activity:</span> {activity.name}
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-medium">Planned Activity:</span> {activity.name}
+                      </div>
+                      {getBookingUrl(item.destination_id, 'destination') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank')}
+                          className="ml-2"
+                        >
+                          <ExternalLink size={14} className="mr-1" />
+                          Book Activity
+                        </Button>
+                      )}
                     </div>
                   )}
 
