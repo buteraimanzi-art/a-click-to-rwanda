@@ -4,11 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, Download, Loader2 } from 'lucide-react';
+import { Send, Bot, Download, Loader2, Sparkles, Mountain } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import ChatMessage from '@/components/ai-planner/ChatMessage';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -59,10 +59,10 @@ const AIPlanner = () => {
 
 I'm here to help you create your perfect Rwanda itinerary. To get started, please tell me:
 
-1. **When** would you like to travel and for how many days?
-2. **What interests** you most? (wildlife, gorillas, nature, culture, adventure)
-3. **What's your budget level?** (budget, mid-range, luxury)
-4. **Who's traveling?** (solo, couple, family, group)
+1. When would you like to travel and for how many days?
+2. What interests you most? (wildlife, gorillas, nature, culture, adventure)
+3. What's your budget level? (budget, mid-range, luxury)
+4. Who's traveling? (solo, couple, family, group)
 
 Feel free to share any specific destinations or activities you'd like to include!`
       }]);
@@ -200,110 +200,104 @@ Feel free to share any specific destinations or activities you'd like to include
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <Bot className="w-16 h-16 mx-auto text-primary mb-4" />
-            <h2 className="text-2xl font-bold mb-2">AI Travel Planner</h2>
-            <p className="text-muted-foreground mb-4">Please login to use the AI planner</p>
-            <Button onClick={() => navigate('/login')}>Login to Continue</Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-xl">
+            <Mountain className="w-10 h-10 text-primary-foreground" />
+          </div>
+          <div>
+            <h2 className="text-3xl font-bold text-foreground">AI Travel Planner</h2>
+            <p className="text-muted-foreground mt-2">Your personal Rwanda journey awaits</p>
+          </div>
+          <Button onClick={() => navigate('/login')} size="lg" className="shadow-lg">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Login to Start Planning
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
-        <Card className="h-[calc(100vh-140px)]">
-          <CardHeader className="border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <CardTitle>AI Travel Planner</CardTitle>
-                  <p className="text-sm text-muted-foreground">Let me help plan your perfect Rwanda trip</p>
-                </div>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <div className="max-w-5xl mx-auto p-4 md:p-6 h-screen flex flex-col">
+        {/* Header */}
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+                <Bot className="w-6 h-6 text-primary-foreground" />
               </div>
-              {messages.length > 1 && (
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
+              <div>
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  AI Travel Planner
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </h1>
+                <p className="text-sm text-muted-foreground">Crafting your perfect Rwanda adventure</p>
+              </div>
+            </div>
+            {messages.length > 1 && (
+              <Button variant="outline" size="sm" onClick={handleDownload} className="shadow-sm">
+                <Download className="w-4 h-4 mr-2" />
+                Save Itinerary
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Chat Area */}
+        <div className="flex-1 bg-card/50 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 flex flex-col overflow-hidden">
+          <ScrollArea className="flex-1 p-4 md:p-6" ref={scrollRef}>
+            <div className="space-y-6 max-w-3xl mx-auto">
+              {messages.map((message, index) => (
+                <ChatMessage key={index} role={message.role} content={message.content} />
+              ))}
+              {isLoading && messages[messages.length - 1]?.content === '' && (
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+                    <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
+                  </div>
+                  <div className="bg-card border border-border/50 rounded-2xl px-4 py-3 shadow-md">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="animate-pulse">Planning your adventure</span>
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </span>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
-          </CardHeader>
+          </ScrollArea>
 
-          <CardContent className="p-0 flex flex-col h-[calc(100%-80px)]">
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Bot className="w-4 h-4 text-primary" />
-                      </div>
-                    )}
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-                    </div>
-                    {message.role === 'user' && (
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {isLoading && messages[messages.length - 1]?.content === '' && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                    </div>
-                    <div className="bg-muted rounded-2xl px-4 py-3">
-                      <p className="text-sm text-muted-foreground">Thinking...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Tell me about your travel preferences..."
-                  className="min-h-[60px] resize-none"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleSend}
-                  disabled={isLoading || !input.trim()}
-                  className="self-end"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
+          {/* Input Area */}
+          <div className="p-4 border-t border-border/50 bg-card/80">
+            <div className="flex gap-3 max-w-3xl mx-auto">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Tell me about your dream Rwanda trip..."
+                className="min-h-[50px] max-h-[150px] resize-none bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+              />
+              <Button
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+                size="lg"
+                className="self-end rounded-xl shadow-md px-6"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
