@@ -44,6 +44,7 @@ export const Header = () => {
           <NavLink to="/">Home</NavLink>
           <NavLink to="/about">About Us</NavLink>
           <NavLink to="/free-independent">Free Independent</NavLink>
+          <NavLink to="/ai-planner">AI Planner</NavLink>
           <NavLink to="/exclusive">Exclusive</NavLink>
           <NavLink to="/tour-operators">Tour Manager</NavLink>
           <NavLink to="/reviews">Reviews</NavLink>
@@ -51,7 +52,7 @@ export const Header = () => {
         </nav>
 
         <div className="flex items-center space-x-4">
-          {user ? (
+        {user ? (
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -59,7 +60,7 @@ export const Header = () => {
               >
                 <UserCircle size={24} />
                 <span className="hidden md:inline-block">
-                  {user.email?.substring(0, 20)}...
+                  {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
                 </span>
                 <ChevronDown
                   size={16}
@@ -68,7 +69,10 @@ export const Header = () => {
               </button>
               {isMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-50">
-                  <p className="px-4 py-2 text-sm text-muted-foreground truncate">
+                  <p className="px-4 py-2 text-sm font-medium text-foreground truncate">
+                    {user.user_metadata?.full_name || user.user_metadata?.name || 'User'}
+                  </p>
+                  <p className="px-4 py-1 text-xs text-muted-foreground truncate">
                     {user.email}
                   </p>
                 </div>
@@ -106,6 +110,7 @@ export const Header = () => {
               <NavLink to="/">Home</NavLink>
               <NavLink to="/about">About Us</NavLink>
               <NavLink to="/free-independent">Free Independent</NavLink>
+              <NavLink to="/ai-planner">AI Planner</NavLink>
               <NavLink to="/exclusive">Exclusive</NavLink>
               <NavLink to="/tour-operators">Tour Manager</NavLink>
               <NavLink to="/reviews">Reviews</NavLink>

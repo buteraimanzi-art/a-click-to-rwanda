@@ -15,6 +15,7 @@ import TourOperators from "./pages/TourOperators";
 import Reviews from "./pages/Reviews";
 import Login from "./pages/Login";
 import InteractiveMap from "./pages/InteractiveMap";
+import AIPlanner from "./pages/AIPlanner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/about" element={<AboutUs />} />
                 <Route path="/free-independent" element={<FreeIndependent />} />
+                <Route path="/ai-planner" element={<AIPlanner />} />
                 <Route path="/exclusive" element={<Exclusive />} />
                 <Route path="/tour-operators" element={<TourOperators />} />
                 <Route path="/reviews" element={<Reviews />} />
