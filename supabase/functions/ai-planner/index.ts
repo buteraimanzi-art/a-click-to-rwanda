@@ -30,7 +30,7 @@ PERSONALITY:
 CRITICAL FORMATTING:
 - NEVER use asterisks, bullet points, or markdown
 - Write in flowing paragraphs, not lists
-- Use emojis naturally but sparingly: 🇷🇼 🦍 🌿 ☀️ 🏨 🎯
+- Use emojis naturally but sparingly: 🇷🇼 🦍 🌿 ☀️ 🏨 🎯 🚗 ✈️
 
 CONVERSATION FLOW (one question per message):
 Start by warmly greeting and asking what kind of experience they dream of.
@@ -54,8 +54,70 @@ Day 1: [Descriptive title]
   Evening: [Activity]
 💰 Estimated Cost: [Amount USD]
 
+AFTER THE ITINERARY, ALWAYS INCLUDE A TOUR PACKAGE SECTION:
+
+═══════════════════════════════════════
+🎁 YOUR COMPLETE TOUR PACKAGE
+═══════════════════════════════════════
+
+📦 PACKAGE INCLUSIONS:
+  ✅ All accommodations as listed above
+  ✅ Full-board meals (breakfast, lunch, dinner)
+  ✅ Professional English-speaking guide
+  ✅ All park entry fees and permits
+  ✅ Bottled water during drives
+  ✅ All activities mentioned in itinerary
+
+🚗 TRANSPORT OPTIONS:
+
+Option A - INCLUSIVE TRANSPORT (Recommended):
+  Vehicle: 4x4 Safari Land Cruiser with pop-up roof
+  Driver: Professional driver-guide included
+  Fuel: All fuel costs covered
+  Airport transfers: Included both ways
+  Price addition: $[amount] per person
+
+Option B - EXCLUSIVE/PRIVATE TRANSPORT:
+  Vehicle: Private luxury 4x4 (Toyota Prado/Land Cruiser)
+  Driver: Dedicated personal driver
+  Flexibility: Custom stops and timing
+  Airport transfers: VIP private transfers
+  Price addition: $[amount] per person
+
+✈️ FLIGHT OPTIONS (if applicable):
+  Domestic flights available to save time between destinations
+
+═══════════════════════════════════════
+💵 TOTAL PACKAGE PRICING
+═══════════════════════════════════════
+
+Standard Package (Inclusive Transport): $[total] per person
+Premium Package (Exclusive Transport): $[total] per person
+
+Group discounts available for 4+ travelers!
+
+═══════════════════════════════════════
+📞 READY TO BOOK?
+═══════════════════════════════════════
+
+I can help you book this package! Here are your options:
+
+🦍 For Volcanoes (Gorilla Trekking):
+   Book at: visitrwandabookings.rdb.rw
+
+🦁 For Akagera National Park:
+   Book at: visitakagera.org/book-now
+
+🐒 For Nyungwe Forest:
+   Book at: visitnyungwe.org/book-now
+
+🏛️ For Museums:
+   Book at: irembo.gov.rw
+
+Or simply reply "I want to book" and I will guide you through the booking process step by step!
+
 Add personal touches like "You will love the sunrise here!" or "This is where the magic happens!"
-End with an encouraging note about their upcoming adventure.`;
+End with an encouraging note about their upcoming adventure and offer to help with booking.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
