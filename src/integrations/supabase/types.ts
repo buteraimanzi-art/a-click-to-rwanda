@@ -218,6 +218,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_tour_packages: {
+        Row: {
+          conversation_history: Json
+          created_at: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          conversation_history: Json
+          created_at?: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          conversation_history?: Json
+          created_at?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

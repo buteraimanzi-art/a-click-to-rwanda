@@ -1,24 +1,44 @@
 import { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, Download, Loader2, Sparkles } from 'lucide-react';
+import { Send, Download, Loader2, Sparkles, Save, FolderOpen, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ChatMessage from '@/components/ai-planner/ChatMessage';
 import logoImage from '@/assets/logo-click-to-rwanda.png';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 type Message = { role: 'user' | 'assistant'; content: string };
+type SavedPackage = { id: string; title: string; conversation_history: Message[]; created_at: string };
 
 const AIPlanner = () => {
   const { user } = useApp();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveTitle, setSaveTitle] = useState('');
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: destinations } = useQuery({
@@ -45,25 +65,88 @@ const AIPlanner = () => {
     },
   });
 
+  const { data: savedPackages, refetch: refetchPackages } = useQuery({
+    queryKey: ['saved-tour-packages', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from('saved_tour_packages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(item => ({
+        ...item,
+        conversation_history: item.conversation_history as unknown as Message[]
+      })) as SavedPackage[];
+    },
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Welcome message on first load
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `🇷🇼 Muraho! Welcome to your Rwanda adventure planner!
+  const getWelcomeMessage = (): Message => ({
+    role: 'assistant',
+    content: `🇷🇼 Muraho! Welcome to your Rwanda adventure planner!
 
 I'm so excited to help you discover the Land of a Thousand Hills. Rwanda is absolutely magical - from mountain gorillas in misty forests to golden savannas teeming with wildlife.
 
 So tell me, what's drawing you to Rwanda? Are you dreaming of coming face-to-face with gorillas, exploring pristine rainforests, or maybe a bit of everything? 🦍🌿`
-      }]);
+  });
+
+  // Welcome message on first load
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([getWelcomeMessage()]);
     }
   }, []);
+
+  const handleSavePackage = async () => {
+    if (!user || messages.length <= 1) return;
+    setIsSaving(true);
+    try {
+      const title = saveTitle.trim() || `Rwanda Trip - ${new Date().toLocaleDateString()}`;
+      const { error } = await supabase.from('saved_tour_packages').insert({
+        user_id: user.id,
+        title,
+        conversation_history: messages,
+      });
+      if (error) throw error;
+      toast.success('Tour package saved!');
+      setSaveDialogOpen(false);
+      setSaveTitle('');
+      refetchPackages();
+    } catch (error) {
+      toast.error('Failed to save package');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLoadPackage = (pkg: SavedPackage) => {
+    setMessages(pkg.conversation_history);
+    toast.success(`Loaded: ${pkg.title}`);
+  };
+
+  const handleDeletePackage = async (id: string) => {
+    try {
+      const { error } = await supabase.from('saved_tour_packages').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Package deleted');
+      refetchPackages();
+    } catch (error) {
+      toast.error('Failed to delete package');
+    }
+  };
+
+  const handleNewConversation = () => {
+    setMessages([getWelcomeMessage()]);
+    toast.success('Started new conversation');
+  };
 
   const streamChat = async (userMessages: Message[]) => {
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-planner`, {
@@ -259,7 +342,7 @@ So tell me, what's drawing you to Rwanda? Are you dreaming of coming face-to-fac
       <div className="max-w-5xl mx-auto p-4 md:p-6 h-screen flex flex-col">
         {/* Header */}
         <div className="bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-4 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <img src={logoImage} alt="Click to Rwanda" className="h-14 w-auto" />
               <div>
@@ -270,12 +353,94 @@ So tell me, what's drawing you to Rwanda? Are you dreaming of coming face-to-fac
                 <p className="text-sm text-muted-foreground">Let's craft your perfect Rwanda adventure together</p>
               </div>
             </div>
-            {messages.length > 1 && (
-              <Button variant="outline" size="sm" onClick={handleDownload} className="shadow-sm">
-                <Download className="w-4 h-4 mr-2" />
-                Save Itinerary
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleNewConversation}>
+                <Plus className="w-4 h-4 mr-1" />
+                New
               </Button>
-            )}
+              
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="relative">
+                    <FolderOpen className="w-4 h-4 mr-1" />
+                    Saved
+                    {savedPackages && savedPackages.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                        {savedPackages.length}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Saved Tour Packages</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 space-y-3">
+                    {savedPackages && savedPackages.length > 0 ? (
+                      savedPackages.map((pkg) => (
+                        <div key={pkg.id} className="p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                          <div className="flex items-start justify-between gap-2">
+                            <button
+                              onClick={() => handleLoadPackage(pkg)}
+                              className="flex-1 text-left"
+                            >
+                              <p className="font-medium text-foreground">{pkg.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(pkg.created_at).toLocaleDateString()}
+                              </p>
+                            </button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDeletePackage(pkg.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">No saved packages yet</p>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {messages.length > 1 && (
+                <>
+                  <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Save className="w-4 h-4 mr-1" />
+                        Save
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Save Tour Package</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 pt-4">
+                        <Input
+                          placeholder="Enter a name for this package..."
+                          value={saveTitle}
+                          onChange={(e) => setSaveTitle(e.target.value)}
+                        />
+                        <Button onClick={handleSavePackage} disabled={isSaving} className="w-full">
+                          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          Save Package
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Button variant="outline" size="sm" onClick={handleDownload}>
+                    <Download className="w-4 h-4 mr-1" />
+                    Download
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
