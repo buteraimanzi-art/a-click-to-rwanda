@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
+import logoImage from '@/assets/logo-click-to-rwanda.png';
 
 export const Header = () => {
   const { user } = useApp();
@@ -10,6 +11,14 @@ export const Header = () => {
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const getUserDisplayName = () => {
+    if (!user) return '';
+    return user.user_metadata?.full_name || 
+           user.user_metadata?.name || 
+           user.email?.split('@')[0] || 
+           'Traveler';
+  };
 
   const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => {
     const isActive = location.pathname === to;
@@ -31,10 +40,8 @@ export const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-sm shadow-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <button onClick={() => navigate('/')} className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-primary-foreground font-bold">R</span>
-          </div>
+        <button onClick={() => navigate('/')} className="flex items-center space-x-3">
+          <img src={logoImage} alt="Click to Rwanda" className="h-12 w-auto" />
           <h1 className="text-xl font-bold text-primary hidden md:block">
             A CLICK TO RWANDA
           </h1>
@@ -59,8 +66,8 @@ export const Header = () => {
                 className="flex items-center space-x-2 text-foreground hover:text-primary transition"
               >
                 <UserCircle size={24} />
-                <span className="hidden md:inline-block">
-                  {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
+                <span className="hidden md:inline-block font-medium">
+                  {getUserDisplayName()}
                 </span>
                 <ChevronDown
                   size={16}
@@ -70,10 +77,7 @@ export const Header = () => {
               {isMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-50">
                   <p className="px-4 py-2 text-sm font-medium text-foreground truncate">
-                    {user.user_metadata?.full_name || user.user_metadata?.name || 'User'}
-                  </p>
-                  <p className="px-4 py-1 text-xs text-muted-foreground truncate">
-                    {user.email}
+                    {getUserDisplayName()}
                   </p>
                 </div>
               )}

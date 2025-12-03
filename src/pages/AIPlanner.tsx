@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, Download, Loader2, Sparkles, Mountain } from 'lucide-react';
+import { Send, Bot, Download, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ChatMessage from '@/components/ai-planner/ChatMessage';
+import logoImage from '@/assets/logo-click-to-rwanda.png';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 
@@ -55,16 +56,11 @@ const AIPlanner = () => {
     if (messages.length === 0) {
       setMessages([{
         role: 'assistant',
-        content: `🇷🇼 Welcome to A Click to Rwanda AI Travel Planner!
+        content: `🇷🇼 Muraho! Welcome to your Rwanda adventure planner!
 
-I'm here to help you create your perfect Rwanda itinerary. To get started, please tell me:
+I'm so excited to help you discover the Land of a Thousand Hills. Rwanda is absolutely magical - from mountain gorillas in misty forests to golden savannas teeming with wildlife.
 
-1. When would you like to travel and for how many days?
-2. What interests you most? (wildlife, gorillas, nature, culture, adventure)
-3. What's your budget level? (budget, mid-range, luxury)
-4. Who's traveling? (solo, couple, family, group)
-
-Feel free to share any specific destinations or activities you'd like to include!`
+So tell me, what's drawing you to Rwanda? Are you dreaming of coming face-to-face with gorillas, exploring pristine rainforests, or maybe a bit of everything? 🦍🌿`
       }]);
     }
   }, []);
@@ -200,11 +196,9 @@ Feel free to share any specific destinations or activities you'd like to include
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
         <div className="w-full max-w-md text-center space-y-6">
-          <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-xl">
-            <Mountain className="w-10 h-10 text-primary-foreground" />
-          </div>
+          <img src={logoImage} alt="Click to Rwanda" className="h-32 w-auto mx-auto" />
           <div>
             <h2 className="text-3xl font-bold text-foreground">AI Travel Planner</h2>
             <p className="text-muted-foreground mt-2">Your personal Rwanda journey awaits</p>
@@ -225,15 +219,13 @@ Feel free to share any specific destinations or activities you'd like to include
         <div className="bg-card/80 backdrop-blur-sm rounded-2xl shadow-lg border border-border/50 p-4 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-                <Bot className="w-6 h-6 text-primary-foreground" />
-              </div>
+              <img src={logoImage} alt="Click to Rwanda" className="h-14 w-auto" />
               <div>
                 <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                   AI Travel Planner
                   <Sparkles className="w-4 h-4 text-primary" />
                 </h1>
-                <p className="text-sm text-muted-foreground">Crafting your perfect Rwanda adventure</p>
+                <p className="text-sm text-muted-foreground">Let's craft your perfect Rwanda adventure together</p>
               </div>
             </div>
             {messages.length > 1 && (
