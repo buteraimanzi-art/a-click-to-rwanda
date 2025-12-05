@@ -116,11 +116,31 @@ So tell me, what's drawing you to Rwanda? Are you dreaming of coming face-to-fac
         conversation_history: messages,
       });
       if (error) throw error;
-      toast.success('Tour package saved!');
+
+      // Send email notification
+      const packageContent = messages
+        .filter(m => m.role === 'assistant')
+        .map(m => m.content)
+        .join('\n\n---\n\n');
+
+      const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Traveler';
+
+      await supabase.functions.invoke('send-package-email', {
+        body: {
+          email: user.email,
+          userName,
+          packageTitle: title,
+          packageContent,
+          packageType: 'ai-planner',
+        },
+      });
+
+      toast.success('Tour package saved and emailed to you!');
       setSaveDialogOpen(false);
       setSaveTitle('');
       refetchPackages();
     } catch (error) {
+      console.error('Save error:', error);
       toast.error('Failed to save package');
     } finally {
       setIsSaving(false);
