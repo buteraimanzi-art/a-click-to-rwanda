@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -59,6 +59,7 @@ const FreeIndependent = () => {
   const [dinnerTime, setDinnerTime] = useState('19:00');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [testingNotification, setTestingNotification] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -604,6 +605,62 @@ const FreeIndependent = () => {
     toast.success('Itinerary downloaded');
   };
 
+  const handleSaveAndEmail = async () => {
+    if (!user || itinerary.length === 0) return;
+    setIsSendingEmail(true);
+
+    try {
+      // Generate text summary of itinerary
+      const packageTitle = `Rwanda Itinerary - ${new Date().toLocaleDateString()}`;
+      const packageContent = itinerary.map((item, index) => {
+        const destination = destinations?.find((d) => d.id === item.destination_id);
+        const origin = destinations?.find((d) => d.id === item.origin_id);
+        const hotel = hotels?.find((h) => h.id === item.hotel_id);
+        const car = cars?.find((c) => c.id === item.car_id);
+        const activity = activities?.find((a) => a.id === item.activity_id);
+        const isTransfer = item.day_type === 'transfer';
+        const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        let dayText = `Day ${index + 1} - ${formattedDate}\n`;
+        if (isTransfer) {
+          dayText += `Transfer: ${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}\n`;
+        } else {
+          dayText += `Location: ${destination?.name || 'Not specified'}\n`;
+        }
+        if (hotel) dayText += `Accommodation: ${hotel.name}\n`;
+        if (car) dayText += `Vehicle: ${car.name}\n`;
+        if (activity) dayText += `Activity: ${activity.name}\n`;
+        if (item.notes) dayText += `Notes: ${item.notes}\n`;
+        dayText += `Schedule: Wake ${item.wake_time}, Breakfast ${item.breakfast_time}, Lunch ${item.lunch_time}, Dinner ${item.dinner_time}`;
+        return dayText;
+      }).join('\n\n---\n\n');
+
+      const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Traveler';
+
+      await supabase.functions.invoke('send-package-email', {
+        body: {
+          email: user.email,
+          userName,
+          packageTitle,
+          packageContent,
+          packageType: 'itinerary',
+        },
+      });
+
+      toast.success('Itinerary saved and emailed to you!');
+    } catch (error) {
+      console.error('Email error:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   if (!user) {
     return (
       <div className="max-w-7xl mx-auto p-8 pt-20 text-center">
@@ -909,21 +966,34 @@ const FreeIndependent = () => {
               {testingNotification ? 'Sending...' : notificationsEnabled ? 'Test Notification' : 'Enable Notifications'}
             </Button>
             {itinerary.length > 0 && (
-              <Button 
-                onClick={() => {
-                  if (notificationsEnabled) {
-                    const notifications = scheduleItineraryNotifications(itinerary, destinations || []);
-                    saveScheduledNotifications(notifications);
-                    toast.success('Itinerary saved with notifications scheduled!');
-                  } else {
-                    toast.info('Enable notifications to receive reminders');
-                  }
-                  handleDownload();
-                }}
-                variant="outline"
-              >
-                <Download size={20} className="mr-2" /> Download & Save
-              </Button>
+              <>
+                <Button 
+                  onClick={() => {
+                    if (notificationsEnabled) {
+                      const notifications = scheduleItineraryNotifications(itinerary, destinations || []);
+                      saveScheduledNotifications(notifications);
+                      toast.success('Itinerary saved with notifications scheduled!');
+                    } else {
+                      toast.info('Enable notifications to receive reminders');
+                    }
+                    handleDownload();
+                  }}
+                  variant="outline"
+                >
+                  <Download size={20} className="mr-2" /> Download
+                </Button>
+                <Button 
+                  onClick={handleSaveAndEmail}
+                  disabled={isSendingEmail}
+                >
+                  {isSendingEmail ? (
+                    <Loader2 size={20} className="mr-2 animate-spin" />
+                  ) : (
+                    <Mail size={20} className="mr-2" />
+                  )}
+                  {isSendingEmail ? 'Sending...' : 'Save & Email'}
+                </Button>
+              </>
             )}
           </div>
         </div>
