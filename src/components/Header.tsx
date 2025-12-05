@@ -1,9 +1,11 @@
-import { Menu, X, UserCircle, ChevronDown, LogIn } from 'lucide-react';
+import { Menu, X, UserCircle, ChevronDown, LogIn, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import logoImage from '@/assets/logo-click-to-rwanda.png';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const Header = () => {
   const { user } = useApp();
@@ -18,6 +20,17 @@ export const Header = () => {
            user.user_metadata?.name || 
            user.email?.split('@')[0] || 
            'Traveler';
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setIsMenuOpen(false);
+      toast.success('Logged out successfully');
+      navigate('/');
+    } catch (error) {
+      toast.error('Error logging out');
+    }
   };
 
   const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => {
@@ -75,10 +88,17 @@ export const Header = () => {
                 />
               </button>
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-50">
-                  <p className="px-4 py-2 text-sm font-medium text-foreground truncate">
+                <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg py-2 z-50 animate-scale-in">
+                  <p className="px-4 py-2 text-sm font-medium text-foreground truncate border-b border-border">
                     {getUserDisplayName()}
                   </p>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-sm text-left text-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 flex items-center gap-2 group"
+                  >
+                    <LogOut size={16} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
+                    <span className="transition-transform duration-300 group-hover:translate-x-1">Logout</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -119,7 +139,15 @@ export const Header = () => {
               <NavLink to="/tour-operators">Tour Manager</NavLink>
               <NavLink to="/reviews">Reviews</NavLink>
               <NavLink to="/map">Map</NavLink>
-              {!user && (
+              {user ? (
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-2 text-sm text-left text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 flex items-center gap-2 group rounded-md border border-destructive"
+                >
+                  <LogOut size={16} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
+                  <span className="transition-transform duration-300 group-hover:translate-x-1">Logout</span>
+                </button>
+              ) : (
                 <Button onClick={() => navigate('/login')} variant="outline">
                   <LogIn size={20} className="mr-2" />
                   Login
