@@ -8,8 +8,8 @@ export const SOSButton = () => {
   const handleSOSClick = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        // Location captured - in production, send to secure backend endpoint
         const { latitude, longitude } = position.coords;
-        console.log(`SOS Alert: User at Latitude: ${latitude}, Longitude: ${longitude}`);
         setIsAlertVisible(true);
         toast.error('SOS alert sent! Help is on the way.', {
           duration: 5000,
