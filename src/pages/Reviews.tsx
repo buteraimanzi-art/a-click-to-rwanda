@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Star, Send, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { reviewSchema } from '@/lib/validations';
+
+const MAX_COMMENT_LENGTH = 1000;
 
 const Reviews = () => {
   const { user } = useApp();
@@ -14,7 +17,6 @@ const Reviews = () => {
   const [selectedDestination, setSelectedDestination] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
-
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
     queryFn: async () => {
@@ -38,12 +40,24 @@ const Reviews = () => {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!user || !selectedDestination || !comment.trim()) throw new Error('Missing data');
+      if (!user) throw new Error('You must be logged in');
+      
+      // Validate input
+      const result = reviewSchema.safeParse({
+        destinationId: selectedDestination,
+        rating,
+        comment,
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error.errors[0].message);
+      }
+      
       const { error } = await supabase.from('reviews').insert({
         user_id: user.id,
-        destination_id: selectedDestination,
-        rating,
-        comment: comment.trim(),
+        destination_id: result.data.destinationId,
+        rating: result.data.rating,
+        comment: result.data.comment,
       });
       if (error) throw error;
     },
@@ -54,7 +68,7 @@ const Reviews = () => {
       setComment('');
       toast.success('Review submitted successfully!');
     },
-    onError: () => toast.error('Failed to submit review'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to submit review'),
   });
 
   return (
@@ -124,10 +138,14 @@ const Reviews = () => {
               <textarea
                 id="comment"
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
                 className="w-full px-4 py-3 border border-input rounded-md bg-background min-h-[120px]"
-                placeholder="Share your experience..."
+                placeholder="Share your experience... (minimum 10 characters)"
+                maxLength={MAX_COMMENT_LENGTH}
               />
+              <div className="text-sm text-muted-foreground mt-1 text-right">
+                {comment.length}/{MAX_COMMENT_LENGTH} characters
+              </div>
             </div>
 
             <Button

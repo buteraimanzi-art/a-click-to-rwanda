@@ -1,7 +1,7 @@
 project_id = "nplhsonknhufztsbdyvh"
 
 [functions.ai-planner]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-package-email]
-verify_jwt = false
+verify_jwt = true

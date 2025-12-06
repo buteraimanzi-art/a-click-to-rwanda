@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -21,9 +22,61 @@ serve(async (req) => {
   }
 
   try {
+    // Verify user authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Create Supabase client to verify the user
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      console.error("Authentication failed:", authError?.message);
+      return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { email, userName, packageTitle, packageContent, packageType }: PackageEmailRequest = await req.json();
 
-    console.log(`Sending ${packageType} email to ${email}`);
+    // Validate input
+    if (!email || !userName || !packageTitle || !packageContent || !packageType) {
+      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Security: Verify the email matches the authenticated user's email
+    if (email !== user.email) {
+      console.error(`Email mismatch: requested ${email}, user is ${user.email}`);
+      return new Response(JSON.stringify({ error: "Email must match your account email" }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate content lengths
+    if (packageTitle.length > 200 || packageContent.length > 50000) {
+      return new Response(JSON.stringify({ error: "Content too long" }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`Sending ${packageType} email to ${email} for user ${user.id}`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -69,7 +122,7 @@ serve(async (req) => {
       
       <div class="package-box">
         <div class="package-title">📋 ${packageTitle}</div>
-        <div class="package-content">${packageContent.replace(/\n/g, '<br>')}</div>
+        <div class="package-content">${packageContent.replace(/\n/g, '<br>').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/&lt;br&gt;/g, '<br>')}</div>
       </div>
       
       <div class="cta-section">
