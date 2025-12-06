@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { customRequestSchema } from '@/lib/validations';
+
+const MAX_MESSAGE_LENGTH = 2000;
 
 const Exclusive = () => {
   const { user } = useApp();
@@ -14,10 +17,18 @@ const Exclusive = () => {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      if (!user || !message.trim()) throw new Error('Missing data');
+      if (!user) throw new Error('You must be logged in');
+      
+      // Validate input
+      const result = customRequestSchema.safeParse({ message });
+      
+      if (!result.success) {
+        throw new Error(result.error.errors[0].message);
+      }
+      
       const { error } = await supabase.from('custom_requests').insert({
         user_id: user.id,
-        message: message.trim(),
+        message: result.data.message,
       });
       if (error) throw error;
     },
@@ -25,7 +36,7 @@ const Exclusive = () => {
       toast.success('Your exclusive tour request has been submitted!');
       setMessage('');
     },
-    onError: () => toast.error('Failed to submit request'),
+    onError: (error: Error) => toast.error(error.message || 'Failed to submit request'),
   });
 
   if (!user) {
@@ -70,10 +81,14 @@ const Exclusive = () => {
             <textarea
               id="message"
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => setMessage(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
               className="w-full px-4 py-3 border border-input rounded-md bg-background min-h-[200px]"
               placeholder="Example: I would like a 5-day luxury gorilla trekking and wildlife safari experience for 2 people. We prefer boutique hotels and are interested in cultural experiences..."
+              maxLength={MAX_MESSAGE_LENGTH}
             />
+            <div className="text-sm text-muted-foreground mt-1 text-right">
+              {message.length}/{MAX_MESSAGE_LENGTH} characters
+            </div>
           </div>
 
           <Button
