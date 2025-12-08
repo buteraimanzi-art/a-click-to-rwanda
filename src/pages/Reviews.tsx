@@ -31,7 +31,7 @@ const Reviews = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('reviews')
-        .select('*')
+        .select('id, destination_id, rating, comment, created_at, display_name')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -179,6 +179,9 @@ const Reviews = () => {
             <div key={review.id} className="bg-card rounded-lg shadow-md p-6">
               <div className="flex justify-between items-start mb-3">
                 <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-primary">{review.display_name || 'Anonymous Traveler'}</span>
+                  </div>
                   <h4 className="font-bold text-lg">
                     {destinations?.find((d) => d.id === review.destination_id)?.name ||
                       review.destination_id}
@@ -198,7 +201,7 @@ const Reviews = () => {
                   </div>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {new Date(review.created_at).toLocaleDateString()}
+                  {new Date(review.created_at!).toLocaleDateString()}
                 </span>
               </div>
               <p className="text-foreground">{review.comment}</p>

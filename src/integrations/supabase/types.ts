@@ -196,6 +196,7 @@ export type Database = {
           comment: string
           created_at: string | null
           destination_id: string
+          display_name: string | null
           id: string
           rating: number
           user_id: string
@@ -204,6 +205,7 @@ export type Database = {
           comment: string
           created_at?: string | null
           destination_id: string
+          display_name?: string | null
           id?: string
           rating: number
           user_id: string
@@ -212,6 +214,7 @@ export type Database = {
           comment?: string
           created_at?: string | null
           destination_id?: string
+          display_name?: string | null
           id?: string
           rating?: number
           user_id?: string
