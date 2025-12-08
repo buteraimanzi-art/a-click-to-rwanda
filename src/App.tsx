@@ -16,6 +16,7 @@ import Reviews from "./pages/Reviews";
 import Login from "./pages/Login";
 import InteractiveMap from "./pages/InteractiveMap";
 import AIPlanner from "./pages/AIPlanner";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
                 <Route path="/reviews" element={<Reviews />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/map" element={<InteractiveMap />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
