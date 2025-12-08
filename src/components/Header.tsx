@@ -93,6 +93,16 @@ export const Header = () => {
                     {getUserDisplayName()}
                   </p>
                   <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      navigate('/profile');
+                    }}
+                    className="w-full px-4 py-2 text-sm text-left text-foreground hover:bg-primary/10 transition-all duration-300 flex items-center gap-2"
+                  >
+                    <UserCircle size={16} />
+                    My Profile
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="w-full px-4 py-2 text-sm text-left text-foreground hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 flex items-center gap-2 group"
                   >
@@ -140,13 +150,25 @@ export const Header = () => {
               <NavLink to="/reviews">Reviews</NavLink>
               <NavLink to="/map">Map</NavLink>
               {user ? (
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-4 py-2 text-sm text-left text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 flex items-center gap-2 group rounded-md border border-destructive"
-                >
-                  <LogOut size={16} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
-                  <span className="transition-transform duration-300 group-hover:translate-x-1">Logout</span>
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      navigate('/profile');
+                    }}
+                    className="w-full px-4 py-2 text-sm text-left text-foreground hover:bg-primary/10 transition-all duration-300 flex items-center gap-2 rounded-md border border-border"
+                  >
+                    <UserCircle size={16} />
+                    My Profile
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-sm text-left text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all duration-300 flex items-center gap-2 group rounded-md border border-destructive"
+                  >
+                    <LogOut size={16} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:scale-110" />
+                    <span className="transition-transform duration-300 group-hover:translate-x-1">Logout</span>
+                  </button>
+                </>
               ) : (
                 <Button onClick={() => navigate('/login')} variant="outline">
                   <LogIn size={20} className="mr-2" />
