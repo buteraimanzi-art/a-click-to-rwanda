@@ -133,7 +133,9 @@ export type Database = {
       }
       itineraries: {
         Row: {
+          activity_booked: boolean | null
           activity_id: string | null
+          all_confirmed: boolean | null
           breakfast_time: string | null
           car_id: string | null
           created_at: string | null
@@ -141,6 +143,7 @@ export type Database = {
           day_type: string
           destination_id: string
           dinner_time: string | null
+          hotel_booked: boolean | null
           hotel_id: string | null
           id: string
           is_booked: boolean | null
@@ -152,7 +155,9 @@ export type Database = {
           wake_time: string | null
         }
         Insert: {
+          activity_booked?: boolean | null
           activity_id?: string | null
+          all_confirmed?: boolean | null
           breakfast_time?: string | null
           car_id?: string | null
           created_at?: string | null
@@ -160,6 +165,7 @@ export type Database = {
           day_type?: string
           destination_id: string
           dinner_time?: string | null
+          hotel_booked?: boolean | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
@@ -171,7 +177,9 @@ export type Database = {
           wake_time?: string | null
         }
         Update: {
+          activity_booked?: boolean | null
           activity_id?: string | null
+          all_confirmed?: boolean | null
           breakfast_time?: string | null
           car_id?: string | null
           created_at?: string | null
@@ -179,6 +187,7 @@ export type Database = {
           day_type?: string
           destination_id?: string
           dinner_time?: string | null
+          hotel_booked?: boolean | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null

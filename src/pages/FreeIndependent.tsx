@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -31,6 +31,19 @@ const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => 
       destination: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
       hotel: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
     },
+    // Museums use Irembo for bookings
+    'kandt-house': {
+      destination: 'https://irembo.gov.rw/rolportal/en/home',
+      hotel: null,
+    },
+    'kings-palace': {
+      destination: 'https://irembo.gov.rw/rolportal/en/home',
+      hotel: null,
+    },
+    'ethnographic': {
+      destination: 'https://irembo.gov.rw/rolportal/en/home',
+      hotel: null,
+    },
   };
 
   const destUrls = urls[destinationId.toLowerCase()];
@@ -38,6 +51,12 @@ const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => 
   
   return type === 'destination' ? destUrls.destination : (destUrls.hotel || destUrls.destination);
 };
+
+// Car rental booking URLs
+const CAR_BOOKING_URLS = [
+  { name: 'Kigali Car Rental', url: 'https://kigalicarrental.rw/' },
+  { name: 'Rwanda Car Hire', url: 'https://rwandacarhire.com/' },
+];
 
 const FreeIndependent = () => {
   const { user } = useApp();
@@ -243,7 +262,7 @@ const FreeIndependent = () => {
     }: {
       id: string;
       field: string;
-      value: string;
+      value: string | boolean;
     }) => {
       const { error } = await supabase
         .from('itineraries')
@@ -253,6 +272,43 @@ const FreeIndependent = () => {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['itinerary'] }),
   });
+
+  // Mark booking status
+  const toggleBookingStatus = (id: string, field: 'hotel_booked' | 'activity_booked', currentValue: boolean) => {
+    updateMutation.mutate({ id, field, value: !currentValue });
+  };
+
+  // Confirm all bookings
+  const confirmAllBookings = async () => {
+    if (!user || itinerary.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('itineraries')
+        .update({ all_confirmed: true })
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['itinerary'] });
+      toast.success('All bookings confirmed!');
+    } catch (error) {
+      toast.error('Failed to confirm bookings');
+    }
+  };
+
+  // Check if all items are booked
+  const allItemsBooked = useMemo(() => {
+    if (itinerary.length === 0) return false;
+    return itinerary.every(item => {
+      const hasHotel = !item.hotel_id || item.hotel_booked;
+      const hasActivity = !item.activity_id || item.activity_booked;
+      return hasHotel && hasActivity;
+    });
+  }, [itinerary]);
+
+  const allConfirmed = useMemo(() => {
+    return itinerary.length > 0 && itinerary.every(item => item.all_confirmed);
+  }, [itinerary]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -1162,11 +1218,27 @@ const FreeIndependent = () => {
                   </div>
 
                   {hotel && (
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <div>
-                        <span className="font-medium">Accommodation:</span> {hotel.name}
+                    <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleBookingStatus(item.id, 'hotel_booked', item.hotel_booked || false)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            item.hotel_booked 
+                              ? 'bg-primary border-primary text-primary-foreground' 
+                              : 'border-muted-foreground hover:border-primary'
+                          }`}
+                        >
+                          {item.hotel_booked && <Check size={12} />}
+                        </button>
+                        <Hotel size={16} className="text-muted-foreground" />
+                        <span className={item.hotel_booked ? 'line-through text-muted-foreground' : ''}>
+                          {hotel.name}
+                        </span>
+                        {item.hotel_booked && (
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
+                        )}
                       </div>
-                      {getBookingUrl(item.destination_id, 'hotel') && (
+                      {getBookingUrl(item.destination_id, 'hotel') && !item.hotel_booked && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1181,17 +1253,34 @@ const FreeIndependent = () => {
                   )}
 
                   {car && (
-                    <div className="text-sm mb-2">
+                    <div className="flex items-center gap-2 text-sm mb-2 p-2 rounded-md bg-muted/30">
+                      <Car size={16} className="text-muted-foreground" />
                       <span className="font-medium">Vehicle:</span> {car.name}
                     </div>
                   )}
                   
                   {activity && (
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <div>
-                        <span className="font-medium">Planned Activity:</span> {activity.name}
+                    <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleBookingStatus(item.id, 'activity_booked', item.activity_booked || false)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            item.activity_booked 
+                              ? 'bg-primary border-primary text-primary-foreground' 
+                              : 'border-muted-foreground hover:border-primary'
+                          }`}
+                        >
+                          {item.activity_booked && <Check size={12} />}
+                        </button>
+                        <MapPin size={16} className="text-muted-foreground" />
+                        <span className={item.activity_booked ? 'line-through text-muted-foreground' : ''}>
+                          {activity.name}
+                        </span>
+                        {item.activity_booked && (
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
+                        )}
                       </div>
-                      {getBookingUrl(item.destination_id, 'destination') && (
+                      {getBookingUrl(item.destination_id, 'destination') && !item.activity_booked && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -1227,6 +1316,111 @@ const FreeIndependent = () => {
           </div>
         )}
       </div>
+
+      {/* Booking Summary & Confirmation Section */}
+      {itinerary.length > 0 && (
+        <div className="bg-card rounded-lg shadow-lg p-6 mt-8">
+          <h3 className="text-2xl font-bold mb-6 flex items-center">
+            <CheckCircle2 size={24} className="mr-2 text-primary" /> Booking Summary & Confirmation
+          </h3>
+
+          {allConfirmed ? (
+            <div className="text-center py-8 bg-primary/10 rounded-lg border-2 border-primary">
+              <CheckCircle2 size={64} className="mx-auto text-primary mb-4" />
+              <h4 className="text-2xl font-bold text-primary mb-2">All Bookings Confirmed!</h4>
+              <p className="text-muted-foreground">Your Rwanda adventure is fully booked and ready to go.</p>
+            </div>
+          ) : (
+            <>
+              {/* Car Rental Section - Once per itinerary */}
+              <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+                <h4 className="font-semibold mb-3 flex items-center">
+                  <Car size={20} className="mr-2" /> Car Rental (Book Once for Entire Trip)
+                </h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Your selected vehicle: <strong>{cars?.find(c => itinerary.some(i => i.car_id === c.id))?.name || 'Not selected'}</strong>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {CAR_BOOKING_URLS.map((rental) => (
+                    <Button
+                      key={rental.name}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(rental.url, '_blank')}
+                    >
+                      <ExternalLink size={14} className="mr-1" />
+                      {rental.name}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Booking Progress */}
+              <div className="mb-6">
+                <h4 className="font-semibold mb-3">Booking Progress</h4>
+                <div className="space-y-2">
+                  {itinerary.map((item, index) => {
+                    const destination = destinations?.find(d => d.id === item.destination_id);
+                    const hotel = hotels?.find(h => h.id === item.hotel_id);
+                    const activity = activities?.find(a => a.id === item.activity_id);
+                    
+                    return (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium text-sm">Day {index + 1}:</span>
+                          <span className="text-sm text-muted-foreground">{destination?.name}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {hotel && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <Hotel size={14} />
+                              {item.hotel_booked ? (
+                                <span className="text-primary">✓ Booked</span>
+                              ) : (
+                                <span className="text-amber-500">Pending</span>
+                              )}
+                            </div>
+                          )}
+                          {activity && (
+                            <div className="flex items-center gap-1 text-sm">
+                              <MapPin size={14} />
+                              {item.activity_booked ? (
+                                <span className="text-primary">✓ Booked</span>
+                              ) : (
+                                <span className="text-amber-500">Pending</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Confirm All Button */}
+              <div className="text-center pt-4 border-t border-border">
+                {allItemsBooked ? (
+                  <Button size="lg" onClick={confirmAllBookings} className="px-8">
+                    <CheckCircle2 size={20} className="mr-2" />
+                    Confirm All Bookings
+                  </Button>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Please complete all bookings above before confirming.
+                    </p>
+                    <Button size="lg" disabled className="px-8">
+                      <CheckCircle2 size={20} className="mr-2" />
+                      Confirm All Bookings
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
