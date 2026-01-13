@@ -9,8 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Click to Rwanda emergency contact email - UPDATE THIS
-const EMERGENCY_EMAIL = "emergency@clicktorwanda.com";
+// Click to Rwanda emergency contact email
+const EMERGENCY_EMAIL = "aclicktorwanda@gmail.com";
 
 interface SOSAlertRequest {
   latitude: number | null;
