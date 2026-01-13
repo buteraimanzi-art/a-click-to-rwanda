@@ -9,9 +9,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Click to Rwanda emergency contact email (temporary: using Resend account email for testing)
-// TODO: Change back to aclicktorwanda@gmail.com after domain verification
-const EMERGENCY_EMAIL = "buteraimanzi@gmail.com";
+// Click to Rwanda emergency contact email
+const EMERGENCY_EMAIL = "aclicktorwanda@gmail.com";
 
 interface SOSAlertRequest {
   latitude: number | null;
