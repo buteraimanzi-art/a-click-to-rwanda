@@ -4,6 +4,32 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Import destination images
+import akageraImg from '@/assets/destinations/akagera-national-park.jpg';
+import campaignMuseumImg from '@/assets/destinations/campaign-against-genocide-museum.jpg';
+import ethnographicImg from '@/assets/destinations/ethnographic-museum.jpg';
+import kandtHouseImg from '@/assets/destinations/kandt-house-museum.jpg';
+import kigaliImg from '@/assets/destinations/kigali.jpg';
+import kingsPalaceImg from '@/assets/destinations/kings-palace-museum.jpg';
+import lakeKivuImg from '@/assets/destinations/lake-kivu.jpg';
+import musanzeImg from '@/assets/destinations/musanze.jpg';
+import nyungweImg from '@/assets/destinations/nyungwe-national-park.jpg';
+import rwandaArtImg from '@/assets/destinations/rwanda-art-museum.jpg';
+
+// Map destination IDs to their images
+const destinationImages: Record<string, string> = {
+  'akagera': akageraImg,
+  'liberation': campaignMuseumImg,
+  'ethnographic': ethnographicImg,
+  'kandt-house': kandtHouseImg,
+  'kigali': kigaliImg,
+  'kings-palace': kingsPalaceImg,
+  'lake-kivu': lakeKivuImg,
+  'musanze': musanzeImg,
+  'nyungwe': nyungweImg,
+  'art-gallery': rwandaArtImg,
+};
+
 const Index = () => {
   const navigate = useNavigate();
 
@@ -73,8 +99,8 @@ const Index = () => {
                 key={dest.id}
                 className="relative rounded-lg shadow-lg overflow-hidden group cursor-pointer"
               >
-                <img
-                  src={`https://placehold.co/600x400/145833/ffffff?text=${encodeURIComponent(dest.name)}`}
+              <img
+                  src={destinationImages[dest.id] || `https://placehold.co/600x400/145833/ffffff?text=${encodeURIComponent(dest.name)}`}
                   alt={dest.name}
                   className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
