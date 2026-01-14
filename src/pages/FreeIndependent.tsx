@@ -18,6 +18,13 @@ import {
 
 // Helper function to get booking URL based on destination
 const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => {
+  // All museums use Irembo for booking guided tours
+  const museumIds = [
+    'kandt-house', 'kings-palace', 'ethnographic', 'liberation', 
+    'art-gallery', 'rwanda-art', 'nyanza-art', 'presidential-palace', 
+    'environment', 'campaign-genocide'
+  ];
+  
   const urls: Record<string, { destination: string; hotel?: string }> = {
     akagera: {
       destination: 'https://visitakagera.org/book-now/',
@@ -27,24 +34,20 @@ const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => 
       destination: 'https://visitnyungwe.org/book-now/',
       hotel: 'https://visitnyungwe.org/book-now/',
     },
+    musanze: {
+      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/rdb',
+      hotel: null,
+    },
     volcanoes: {
-      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
-      hotel: 'https://visitrwandabookings.rdb.rw/rdbportal/mountain-gorilla-tracking',
-    },
-    // Museums use Irembo for bookings
-    'kandt-house': {
-      destination: 'https://irembo.gov.rw/rolportal/en/home',
-      hotel: null,
-    },
-    'kings-palace': {
-      destination: 'https://irembo.gov.rw/rolportal/en/home',
-      hotel: null,
-    },
-    'ethnographic': {
-      destination: 'https://irembo.gov.rw/rolportal/en/home',
+      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/rdb',
       hotel: null,
     },
   };
+  
+  // Check if it's a museum - all museums use Irembo
+  if (museumIds.includes(destinationId.toLowerCase())) {
+    return 'https://irembo.gov.rw/home/citizen/all_services';
+  }
 
   const destUrls = urls[destinationId.toLowerCase()];
   if (!destUrls) return null;
@@ -52,8 +55,9 @@ const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => 
   return type === 'destination' ? destUrls.destination : (destUrls.hotel || destUrls.destination);
 };
 
-// Car rental booking URLs
+// Car rental booking URLs - using Kayak for Kigali car rentals
 const CAR_BOOKING_URLS = [
+  { name: 'Kayak - Kigali Car Rentals', url: 'https://www.kayak.com/Cheap-Kigali-Car-Rentals.15534.cars.ksp' },
   { name: 'Kigali Car Rental', url: 'https://kigalicarrental.rw/' },
   { name: 'Rwanda Car Hire', url: 'https://rwandacarhire.com/' },
 ];
