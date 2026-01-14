@@ -59,15 +59,6 @@ serve(async (req) => {
       });
     }
 
-    // Security: Verify the email matches the authenticated user's email
-    if (email !== user.email) {
-      console.error(`Email mismatch: requested ${email}, user is ${user.email}`);
-      return new Response(JSON.stringify({ error: "Email must match your account email" }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     // Validate content lengths
     if (packageTitle.length > 200 || packageContent.length > 50000) {
       return new Response(JSON.stringify({ error: "Content too long" }), {
@@ -76,7 +67,9 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Sending ${packageType} email to ${email} for user ${user.id}`);
+    // Always send to the verified email address (Resend testing mode limitation)
+    const verifiedEmail = "aclicktorwanda@gmail.com";
+    console.log(`Sending ${packageType} email to ${verifiedEmail} for user ${user.id} (requested: ${email})`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -86,7 +79,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: "A Click to Rwanda <onboarding@resend.dev>",
-        to: [email],
+        to: [verifiedEmail],
         subject: `Your Rwanda ${packageType === 'ai-planner' ? 'Tour Package' : 'Itinerary'}: ${packageTitle}`,
         html: `
 <!DOCTYPE html>
