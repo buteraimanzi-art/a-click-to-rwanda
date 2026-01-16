@@ -16,8 +16,23 @@ import {
   sendTestNotification,
 } from '@/lib/notifications';
 
-// Helper function to get booking URL based on destination
-const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel') => {
+// Hotel-specific booking URLs
+const HOTEL_BOOKING_URLS: Record<string, string> = {
+  // Kigali hotels
+  'hotel-c': 'https://www.serenahotels.com/kigali', // Kigali Serena Hotel
+  'hotel-d': 'https://www.radissonhotels.com/en-us/hotels/radisson-blu-convention-kigali', // Radisson Blu Hotel
+  // Musanze hotels
+  'hotel-b': 'https://fivevolcanoesrwanda.com/', // Five Volcanoes Boutique Hotel
+  'hotel-a': 'https://3bhotels.com/branches/mountain-gorilla-view-lodge/', // Mountain Gorilla View Lodge
+};
+
+// Helper function to get booking URL based on destination or hotel
+const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel', hotelId?: string | null) => {
+  // If it's a hotel booking and we have a specific hotel URL, use that
+  if (type === 'hotel' && hotelId && HOTEL_BOOKING_URLS[hotelId]) {
+    return HOTEL_BOOKING_URLS[hotelId];
+  }
+  
   // All museums use Irembo for booking guided tours
   const museumIds = [
     'kandt-house', 'kings-palace', 'ethnographic', 'liberation', 
@@ -837,67 +852,67 @@ const FreeIndependent = () => {
             </select>
           </div>
 
-          {dayType === 'regular' && (
-            <>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Hotel {itinerary.length > 0 && itinerary[itinerary.length - 1].destination_id === selectedDestination && '(or same as previous)'}
+          {/* Hotel selection - shown for both regular and transfer days */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Hotel {dayType === 'transfer' ? '(at destination)' : ''} 
+              {itinerary.length > 0 && itinerary[itinerary.length - 1].destination_id === selectedDestination && ' (or same as previous)'}
+            </label>
+            {dayType === 'regular' && itinerary.length > 0 && itinerary[itinerary.length - 1].destination_id === selectedDestination && (
+              <div className="mb-2">
+                <label className="flex items-center text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useSameHotel}
+                    onChange={(e) => {
+                      setUseSameHotel(e.target.checked);
+                      if (e.target.checked) setSelectedHotel('');
+                    }}
+                    className="mr-2"
+                  />
+                  <span>Same hotel as Day {itinerary.length}</span>
                 </label>
-                {itinerary.length > 0 && itinerary[itinerary.length - 1].destination_id === selectedDestination && (
-                  <div className="mb-2">
-                    <label className="flex items-center text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useSameHotel}
-                        onChange={(e) => {
-                          setUseSameHotel(e.target.checked);
-                          if (e.target.checked) setSelectedHotel('');
-                        }}
-                        className="mr-2"
-                      />
-                      <span>Same hotel as Day {itinerary.length}</span>
-                    </label>
-                  </div>
-                )}
-                <select
-                  value={selectedHotel}
-                  onChange={(e) => {
-                    setSelectedHotel(e.target.value);
-                    setUseSameHotel(false);
-                  }}
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                  disabled={!selectedDestination || useSameHotel}
-                >
-                  <option value="">-- Choose hotel --</option>
-                  {hotels
-                    ?.filter((h) => h.destination_id === selectedDestination)
-                    .map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name}
-                      </option>
-                    ))}
-                </select>
               </div>
+            )}
+            <select
+              value={selectedHotel}
+              onChange={(e) => {
+                setSelectedHotel(e.target.value);
+                setUseSameHotel(false);
+              }}
+              className="w-full px-3 py-2 border border-input rounded-md bg-background"
+              disabled={!selectedDestination || useSameHotel}
+            >
+              <option value="">-- Choose hotel --</option>
+              {hotels
+                ?.filter((h) => h.destination_id === selectedDestination)
+                .map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))}
+            </select>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2">Activity</label>
-                <select
-                  value={selectedActivity}
-                  onChange={(e) => setSelectedActivity(e.target.value)}
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                  disabled={!selectedDestination}
-                >
-                  <option value="">-- Choose activity --</option>
-                  {activities
-                    ?.filter((a) => a.destination_id === selectedDestination)
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            </>
+          {dayType === 'regular' && (
+            <div>
+              <label className="block text-sm font-medium mb-2">Activity</label>
+              <select
+                value={selectedActivity}
+                onChange={(e) => setSelectedActivity(e.target.value)}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                disabled={!selectedDestination}
+              >
+                <option value="">-- Choose activity --</option>
+                {activities
+                  ?.filter((a) => a.destination_id === selectedDestination)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
           )}
 
           <div>
@@ -1146,56 +1161,57 @@ const FreeIndependent = () => {
                       />
                     </div>
                     
-                    {!isTransfer && (
-                      <>
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Hotel</label>
-                          <select
-                            value={item.hotel_id || ''}
-                            onChange={(e) =>
-                              updateMutation.mutate({
-                                id: item.id,
-                                field: 'hotel_id',
-                                value: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                          >
-                            <option value="">Not selected</option>
-                            {hotels
-                              ?.filter((h) => h.destination_id === item.destination_id)
-                              .map((h) => (
-                                <option key={h.id} value={h.id}>
-                                  {h.name}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
+                    {/* Hotel selection - available for both regular and transfer days */}
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                        Hotel {isTransfer ? '(at destination)' : ''}
+                      </label>
+                      <select
+                        value={item.hotel_id || ''}
+                        onChange={(e) =>
+                          updateMutation.mutate({
+                            id: item.id,
+                            field: 'hotel_id',
+                            value: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                      >
+                        <option value="">Not selected</option>
+                        {hotels
+                          ?.filter((h) => h.destination_id === item.destination_id)
+                          .map((h) => (
+                            <option key={h.id} value={h.id}>
+                              {h.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
 
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
-                          <select
-                            value={item.activity_id || ''}
-                            onChange={(e) =>
-                              updateMutation.mutate({
-                                id: item.id,
-                                field: 'activity_id',
-                                value: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                          >
-                            <option value="">Not selected</option>
-                            {activities
-                              ?.filter((a) => a.destination_id === item.destination_id)
-                              .map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.name}
-                                </option>
-                              ))}
-                          </select>
-                        </div>
-                      </>
+                    {!isTransfer && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
+                        <select
+                          value={item.activity_id || ''}
+                          onChange={(e) =>
+                            updateMutation.mutate({
+                              id: item.id,
+                              field: 'activity_id',
+                              value: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                        >
+                          <option value="">Not selected</option>
+                          {activities
+                            ?.filter((a) => a.destination_id === item.destination_id)
+                            .map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
                     )}
 
                     <div>
@@ -1242,11 +1258,11 @@ const FreeIndependent = () => {
                           <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
                         )}
                       </div>
-                      {getBookingUrl(item.destination_id, 'hotel') && !item.hotel_booked && (
+                      {(HOTEL_BOOKING_URLS[item.hotel_id || ''] || getBookingUrl(item.destination_id, 'hotel', item.hotel_id)) && !item.hotel_booked && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel')!, '_blank')}
+                          onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank')}
                           className="ml-2"
                         >
                           <ExternalLink size={14} className="mr-1" />
