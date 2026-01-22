@@ -68,7 +68,7 @@ serve(async (req) => {
     }
 
     // Always send to the verified email address (Resend testing mode limitation)
-    const verifiedEmail = "aclicktorwanda@gmail.com";
+    const verifiedEmail = "buteraimanzi@gmail.com";
     console.log(`Sending ${packageType} email to ${verifiedEmail} for user ${user.id} (requested: ${email})`);
 
     const response = await fetch("https://api.resend.com/emails", {
