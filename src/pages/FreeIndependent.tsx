@@ -50,11 +50,11 @@ const getBookingUrl = (destinationId: string, type: 'destination' | 'hotel', hot
       hotel: 'https://visitnyungwe.org/book-now/',
     },
     musanze: {
-      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/rdb',
+      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/tourism/tourist-permit#_48_INSTANCE_vnEd4049BXg8_%3Dhttps%253A%252F%252Fvisitrwandabookings.rdb.rw%252FrdbBooking%252Ftourismpermit_v1%252FTourismPermit_v1.xhtml%253F%2526lang%253Den',
       hotel: null,
     },
     volcanoes: {
-      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/rdb',
+      destination: 'https://visitrwandabookings.rdb.rw/rdbportal/web/tourism/tourist-permit#_48_INSTANCE_vnEd4049BXg8_%3Dhttps%253A%252F%252Fvisitrwandabookings.rdb.rw%252FrdbBooking%252Ftourismpermit_v1%252FTourismPermit_v1.xhtml%253F%2526lang%253Den',
       hotel: null,
     },
   };
