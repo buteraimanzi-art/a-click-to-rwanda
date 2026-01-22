@@ -11,7 +11,8 @@ const corsHeaders = {
 };
 
 // Click to Rwanda emergency contact email
-const EMERGENCY_EMAIL = "aclicktorwanda@gmail.com";
+// Note: Using Resend account owner's email for testing mode
+const EMERGENCY_EMAIL = "buteraimanzi@gmail.com";
 
 interface SOSAlertRequest {
   latitude: number | null;
