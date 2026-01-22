@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { decode as base64Decode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -16,6 +17,9 @@ interface SOSAlertRequest {
   latitude: number | null;
   longitude: number | null;
   locationAvailable: boolean;
+  phoneNumber: string;
+  description: string;
+  voiceRecording: string | null; // base64 encoded audio
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -47,7 +51,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { latitude, longitude, locationAvailable }: SOSAlertRequest = await req.json();
+    const { 
+      latitude, 
+      longitude, 
+      locationAvailable,
+      phoneNumber,
+      description,
+      voiceRecording
+    }: SOSAlertRequest = await req.json();
 
     // Get user's name from metadata
     const userName = user.user_metadata?.full_name || 
@@ -67,6 +78,22 @@ const handler = async (req: Request): Promise<Response> => {
       ? `<p><strong>📍 Location:</strong> <a href="https://www.google.com/maps?q=${latitude},${longitude}" style="color: #dc2626;">View on Google Maps</a></p>
          <p><strong>Coordinates:</strong> ${latitude.toFixed(6)}, ${longitude.toFixed(6)}</p>`
       : `<p><strong>📍 Location:</strong> <span style="color: #dc2626;">Location unavailable - user may have denied permission</span></p>`;
+
+    // Emergency description section
+    const descriptionSection = description 
+      ? `<div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+           <h2 style="margin-top: 0; color: #991b1b;">📝 Emergency Description</h2>
+           <p style="white-space: pre-wrap; margin: 0;">${description}</p>
+         </div>`
+      : '';
+
+    // Voice recording note
+    const voiceNote = voiceRecording 
+      ? `<div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+           <h2 style="margin-top: 0; color: #991b1b;">🎤 Voice Recording</h2>
+           <p>A voice recording is attached to this email. Please listen to it for details about the emergency.</p>
+         </div>`
+      : '';
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -89,6 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
             <h2 style="margin-top: 0; color: #991b1b;">👤 Traveler Information</h2>
             <p><strong>Name:</strong> ${userName}</p>
             <p><strong>Email:</strong> <a href="mailto:${userEmail}" style="color: #dc2626;">${userEmail}</a></p>
+            <p><strong>📞 Phone:</strong> <a href="tel:${phoneNumber}" style="color: #dc2626; font-size: 18px; font-weight: bold;">${phoneNumber}</a></p>
             <p><strong>User ID:</strong> ${user.id}</p>
           </div>
           
@@ -96,6 +124,9 @@ const handler = async (req: Request): Promise<Response> => {
             <h2 style="margin-top: 0; color: #991b1b;">📍 Location Details</h2>
             ${locationInfo}
           </div>
+
+          ${descriptionSection}
+          ${voiceNote}
           
           <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h2 style="margin-top: 0; color: #991b1b;">🕐 Alert Time</h2>
@@ -104,7 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <div style="background-color: #991b1b; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px;">
             <p style="margin: 0; font-weight: bold;">⚠️ IMMEDIATE ACTION REQUIRED ⚠️</p>
-            <p style="margin: 10px 0 0 0;">Please contact this traveler immediately to assess the emergency situation.</p>
+            <p style="margin: 10px 0 0 0;">Please contact this traveler immediately at <a href="tel:${phoneNumber}" style="color: white; font-weight: bold;">${phoneNumber}</a></p>
           </div>
         </div>
         
@@ -115,12 +146,32 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const emailResponse = await resend.emails.send({
+    // Prepare attachments if voice recording exists
+    const attachments = [];
+    if (voiceRecording) {
+      try {
+        const audioBuffer = base64Decode(voiceRecording);
+        attachments.push({
+          filename: `sos-voice-recording-${Date.now()}.webm`,
+          content: audioBuffer,
+        });
+      } catch (e) {
+        console.error("Error processing voice recording:", e);
+      }
+    }
+
+    const emailPayload: any = {
       from: "Click to Rwanda Emergency <onboarding@resend.dev>",
       to: [EMERGENCY_EMAIL],
-      subject: `🚨 EMERGENCY SOS ALERT - ${userName}`,
+      subject: `🚨 EMERGENCY SOS ALERT - ${userName} - ${phoneNumber}`,
       html: emailHtml,
-    });
+    };
+
+    if (attachments.length > 0) {
+      emailPayload.attachments = attachments;
+    }
+
+    const emailResponse = await resend.emails.send(emailPayload);
 
     console.log("SOS Alert email sent successfully:", emailResponse);
 
