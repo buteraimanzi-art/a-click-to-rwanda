@@ -3,11 +3,11 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
-import { calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
+import { cn, calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
 import {
   requestNotificationPermission,
   scheduleItineraryNotifications,
@@ -18,6 +18,8 @@ import {
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { ItineraryProgress } from '@/components/itinerary/ItineraryProgress';
 import { SmartSuggestions } from '@/components/itinerary/SmartSuggestions';
+import { ItineraryCalendarView } from '@/components/itinerary/ItineraryCalendarView';
+import { isPast, isToday } from 'date-fns';
 
 // Hotel-specific booking URLs
 const HOTEL_BOOKING_URLS: Record<string, string> = {
@@ -104,6 +106,8 @@ const FreeIndependent = () => {
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [showCostInputs, setShowCostInputs] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [sendingDailyReminder, setSendingDailyReminder] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -896,6 +900,48 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
     }
   };
 
+  // Send daily reminder email for today's activities
+  const handleSendDailyReminder = async () => {
+    if (!user) return;
+    
+    // Check if there are any items for today
+    const today = new Date().toISOString().split('T')[0];
+    const todayItems = itinerary.filter(item => item.date === today);
+    
+    if (todayItems.length === 0) {
+      toast.info('No activities scheduled for today');
+      return;
+    }
+
+    setSendingDailyReminder(true);
+    try {
+      const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Traveler';
+      
+      const { data, error } = await supabase.functions.invoke('send-daily-reminder', {
+        body: {
+          userId: user.id,
+          userEmail: user.email,
+          userName,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success("Today's schedule emailed to you!");
+    } catch (error) {
+      console.error('Daily reminder error:', error);
+      toast.error('Failed to send daily reminder');
+    } finally {
+      setSendingDailyReminder(false);
+    }
+  };
+
+  // Check if a date is in the past (not today)
+  const isDatePast = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return isPast(date) && !isToday(date);
+  };
+
   if (!user) {
     return (
       <div className="max-w-7xl mx-auto p-8 pt-20 text-center">
@@ -1200,6 +1246,28 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
       {/* Progress Indicator */}
       <ItineraryProgress itinerary={itinerary} />
 
+      {/* Calendar View Toggle & Display */}
+      {itinerary.length > 0 && (
+        <div className="mb-4">
+          <Button
+            onClick={() => setShowCalendarView(!showCalendarView)}
+            variant={showCalendarView ? "default" : "outline"}
+            className="mb-4"
+          >
+            <CalendarDays size={20} className="mr-2" />
+            {showCalendarView ? 'Hide Calendar View' : 'Show Calendar View'}
+          </Button>
+          
+          {showCalendarView && (
+            <ItineraryCalendarView
+              itinerary={itinerary}
+              destinations={destinations}
+              activities={activities}
+            />
+          )}
+        </div>
+      )}
+
       <div className="bg-card rounded-lg shadow-lg p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
           <h3 className="text-2xl font-bold flex items-center">
@@ -1225,6 +1293,27 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
             </Button>
             {itinerary.length > 0 && (
               <>
+                <Button
+                  onClick={() => setShowCalendarView(!showCalendarView)}
+                  variant={showCalendarView ? "default" : "outline"}
+                  size="sm"
+                >
+                  <CalendarDays size={18} className="mr-2" />
+                  Calendar
+                </Button>
+                <Button
+                  onClick={handleSendDailyReminder}
+                  disabled={sendingDailyReminder}
+                  variant="outline"
+                  size="sm"
+                >
+                  {sendingDailyReminder ? (
+                    <Loader2 size={18} className="mr-2 animate-spin" />
+                  ) : (
+                    <Mail size={18} className="mr-2" />
+                  )}
+                  Today's Schedule
+                </Button>
                 <Button 
                   onClick={() => {
                     if (notificationsEnabled) {
@@ -1237,20 +1326,22 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                     handleDownload();
                   }}
                   variant="outline"
+                  size="sm"
                 >
-                  <Download size={20} className="mr-2" /> Download
+                  <Download size={18} className="mr-2" /> Download
                 </Button>
                 <Button 
                   onClick={handleSaveAndEmail}
                   disabled={isSendingEmail}
                   variant="outline"
+                  size="sm"
                 >
                   {isSendingEmail ? (
-                    <Loader2 size={20} className="mr-2 animate-spin" />
+                    <Loader2 size={18} className="mr-2 animate-spin" />
                   ) : (
-                    <Mail size={20} className="mr-2" />
+                    <Mail size={18} className="mr-2" />
                   )}
-                  {isSendingEmail ? 'Sending...' : 'Email'}
+                  Email All
                 </Button>
               </>
             )}
@@ -1284,6 +1375,8 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                     });
 
                     const isTransfer = item.day_type === 'transfer';
+                    const isPastDay = isDatePast(item.date);
+                    const isTodayDay = isToday(new Date(item.date));
 
                     // Calculate distance and travel time for transfer days
                     let distance: number | null = null;
@@ -1304,9 +1397,13 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`border border-border rounded-lg p-5 bg-background/50 transition-shadow ${
-                              snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-                            }`}
+                            className={cn(
+                              'border rounded-lg p-5 transition-shadow',
+                              snapshot.isDragging && 'shadow-lg ring-2 ring-primary',
+                              isPastDay && 'bg-destructive/10 border-destructive/50 opacity-80',
+                              isTodayDay && 'bg-primary/10 border-primary ring-2 ring-primary/30',
+                              !isPastDay && !isTodayDay && 'bg-background/50 border-border'
+                            )}
                           >
                             <div className="flex justify-between items-start mb-3">
                               <div className="flex items-start gap-3 flex-1">
@@ -1320,13 +1417,28 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                 </div>
                                 
                                 <div className="flex-1">
-                                  <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm text-muted-foreground font-medium">Day {index + 1}</span>
+                                    {isPastDay && (
+                                      <span className="inline-block bg-destructive/20 text-destructive px-2 py-0.5 rounded text-xs font-medium">
+                                        PAST
+                                      </span>
+                                    )}
+                                    {isTodayDay && (
+                                      <span className="inline-block bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs font-medium animate-pulse">
+                                        TODAY
+                                      </span>
+                                    )}
+                                  </div>
                                   {isTransfer && (
                                     <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
                                       Transfer
                                     </span>
                                   )}
-                                  <h4 className="text-2xl font-bold text-primary">
+                                  <h4 className={cn(
+                                    'text-2xl font-bold',
+                                    isPastDay ? 'text-destructive' : 'text-primary'
+                                  )}>
                                     {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
                                   </h4>
                                   <p className="text-sm text-muted-foreground mt-1">
@@ -1448,15 +1560,21 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                             </div>
 
                             {hotel && (
-                              <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                              <div className={cn(
+                                'flex items-center justify-between text-sm mb-2 p-2 rounded-md',
+                                isPastDay ? 'bg-destructive/10' : 'bg-muted/30'
+                              )}>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => toggleBookingStatus(item.id, 'hotel_booked', item.hotel_booked || false)}
-                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                    onClick={() => !isPastDay && toggleBookingStatus(item.id, 'hotel_booked', item.hotel_booked || false)}
+                                    disabled={isPastDay}
+                                    className={cn(
+                                      'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                                       item.hotel_booked 
                                         ? 'bg-primary border-primary text-primary-foreground' 
-                                        : 'border-muted-foreground hover:border-primary'
-                                    }`}
+                                        : 'border-muted-foreground hover:border-primary',
+                                      isPastDay && 'opacity-50 cursor-not-allowed'
+                                    )}
                                   >
                                     {item.hotel_booked && <Check size={12} />}
                                   </button>
@@ -1467,8 +1585,11 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                   {item.hotel_booked && (
                                     <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
                                   )}
+                                  {isPastDay && !item.hotel_booked && (
+                                    <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded-full">Expired</span>
+                                  )}
                                 </div>
-                                {(HOTEL_BOOKING_URLS[item.hotel_id || ''] || getBookingUrl(item.destination_id, 'hotel', item.hotel_id)) && !item.hotel_booked && (
+                                {!isPastDay && (HOTEL_BOOKING_URLS[item.hotel_id || ''] || getBookingUrl(item.destination_id, 'hotel', item.hotel_id)) && !item.hotel_booked && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1490,15 +1611,21 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                             )}
 
                             {activity && (
-                              <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                              <div className={cn(
+                                'flex items-center justify-between text-sm mb-2 p-2 rounded-md',
+                                isPastDay ? 'bg-destructive/10' : 'bg-muted/30'
+                              )}>
                                 <div className="flex items-center gap-2">
                                   <button
-                                    onClick={() => toggleBookingStatus(item.id, 'activity_booked', item.activity_booked || false)}
-                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                    onClick={() => !isPastDay && toggleBookingStatus(item.id, 'activity_booked', item.activity_booked || false)}
+                                    disabled={isPastDay}
+                                    className={cn(
+                                      'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                                       item.activity_booked 
                                         ? 'bg-primary border-primary text-primary-foreground' 
-                                        : 'border-muted-foreground hover:border-primary'
-                                    }`}
+                                        : 'border-muted-foreground hover:border-primary',
+                                      isPastDay && 'opacity-50 cursor-not-allowed'
+                                    )}
                                   >
                                     {item.activity_booked && <Check size={12} />}
                                   </button>
@@ -1509,8 +1636,11 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                   {item.activity_booked && (
                                     <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
                                   )}
+                                  {isPastDay && !item.activity_booked && (
+                                    <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded-full">Expired</span>
+                                  )}
                                 </div>
-                                {getBookingUrl(item.destination_id, 'destination') && !item.activity_booked && (
+                                {!isPastDay && getBookingUrl(item.destination_id, 'destination') && !item.activity_booked && (
                                   <Button
                                     variant="outline"
                                     size="sm"
