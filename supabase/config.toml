@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.send-package-email]
 verify_jwt = true
+
+[functions.send-sos-alert]
+verify_jwt = true
+
+[functions.send-daily-reminder]
+verify_jwt = true
