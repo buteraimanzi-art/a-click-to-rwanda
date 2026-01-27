@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -98,6 +98,8 @@ const FreeIndependent = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [testingNotification, setTestingNotification] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isSavingPackage, setIsSavingPackage] = useState(false);
+  const [showCostInputs, setShowCostInputs] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -328,6 +330,19 @@ const FreeIndependent = () => {
   const allConfirmed = useMemo(() => {
     return itinerary.length > 0 && itinerary.every(item => item.all_confirmed);
   }, [itinerary]);
+
+  // Calculate total costs
+  const totalCosts = useMemo(() => {
+    return itinerary.reduce((acc, item) => ({
+      hotel: acc.hotel + (Number(item.hotel_cost) || 0),
+      activity: acc.activity + (Number(item.activity_cost) || 0),
+      car: acc.car + (Number(item.car_cost) || 0),
+      transport: acc.transport + (Number(item.transport_cost) || 0),
+      other: acc.other + (Number(item.other_cost) || 0),
+    }), { hotel: 0, activity: 0, car: 0, transport: 0, other: 0 });
+  }, [itinerary]);
+
+  const grandTotal = totalCosts.hotel + totalCosts.activity + totalCosts.car + totalCosts.transport + totalCosts.other;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -732,7 +747,105 @@ const FreeIndependent = () => {
       console.error('Email error:', error);
       toast.error('Failed to send email');
     } finally {
-      setIsSendingEmail(false);
+    setIsSendingEmail(false);
+    }
+  };
+
+  // Save itinerary as a package
+  const handleSaveAsPackage = async () => {
+    if (!user || itinerary.length === 0) return;
+    setIsSavingPackage(true);
+
+    try {
+      // Generate package title
+      const startDate = new Date(itinerary[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endDate = new Date(itinerary[itinerary.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const packageTitle = `Rwanda Trip: ${startDate} - ${endDate}`;
+
+      // Build conversation history format that matches AI Planner
+      const conversationHistory = itinerary.map((item, index) => {
+        const destination = destinations?.find((d) => d.id === item.destination_id);
+        const origin = destinations?.find((d) => d.id === item.origin_id);
+        const hotel = hotels?.find((h) => h.id === item.hotel_id);
+        const car = cars?.find((c) => c.id === item.car_id);
+        const activity = activities?.find((a) => a.id === item.activity_id);
+        const isTransfer = item.day_type === 'transfer';
+        const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+
+        let content = `Day ${index + 1}: ${formattedDate}\n`;
+        if (isTransfer) {
+          content += `📍 Transfer: ${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}\n`;
+        } else {
+          content += `📍 Destination: ${destination?.name || 'Not specified'}\n`;
+        }
+        if (hotel) content += `🏨 Hotel: ${hotel.name}${item.hotel_cost ? ` - $${item.hotel_cost}` : ''}\n`;
+        if (activity) content += `🎯 Activity: ${activity.name}${item.activity_cost ? ` - $${item.activity_cost}` : ''}\n`;
+        if (car) content += `🚗 Vehicle: ${car.name}${item.car_cost ? ` - $${item.car_cost}/day` : ''}\n`;
+        if (item.transport_cost) content += `⛽ Transport: $${item.transport_cost}\n`;
+        if (item.other_cost) content += `📦 Other: $${item.other_cost}\n`;
+        if (item.notes) content += `📝 Notes: ${item.notes}\n`;
+
+        const dayCost = (Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
+                        (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0);
+        if (dayCost > 0) content += `💰 Day Total: $${dayCost.toFixed(2)}`;
+
+        return { role: 'assistant' as const, content };
+      });
+
+      // Add summary message
+      if (grandTotal > 0) {
+        conversationHistory.push({
+          role: 'assistant' as const,
+          content: `═══════════════════════════════════════
+💵 TOTAL PACKAGE COST
+═══════════════════════════════════════
+
+🏨 Accommodation: $${totalCosts.hotel.toFixed(2)}
+🎯 Activities: $${totalCosts.activity.toFixed(2)}
+🚗 Car Rental: $${totalCosts.car.toFixed(2)}
+⛽ Transport: $${totalCosts.transport.toFixed(2)}
+📦 Other: $${totalCosts.other.toFixed(2)}
+
+💰 GRAND TOTAL: $${grandTotal.toFixed(2)}
+
+${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size} destinations`
+        });
+      }
+
+      // Save to database
+      const { error } = await supabase.from('saved_tour_packages').insert({
+        user_id: user.id,
+        title: packageTitle,
+        conversation_history: conversationHistory,
+      });
+
+      if (error) throw error;
+
+      // Send email notification
+      const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Traveler';
+      const packageContent = conversationHistory.map(m => m.content).join('\n\n---\n\n');
+
+      await supabase.functions.invoke('send-package-email', {
+        body: {
+          email: user.email,
+          userName,
+          packageTitle,
+          packageContent,
+          packageType: 'itinerary',
+        },
+      });
+
+      toast.success('Package saved and emailed! View it in your Profile.');
+    } catch (error) {
+      console.error('Save package error:', error);
+      toast.error('Failed to save package');
+    } finally {
+      setIsSavingPackage(false);
     }
   };
 
@@ -1032,6 +1145,14 @@ const FreeIndependent = () => {
           </h3>
           <div className="flex gap-2 flex-wrap">
             <Button
+              onClick={() => setShowCostInputs(!showCostInputs)}
+              variant={showCostInputs ? "default" : "outline"}
+              size="sm"
+            >
+              <DollarSign size={18} className="mr-2" />
+              {showCostInputs ? 'Hide Costs' : 'Add Costs'}
+            </Button>
+            <Button
               onClick={handleTestNotification}
               variant="outline"
               size="sm"
@@ -1060,13 +1181,14 @@ const FreeIndependent = () => {
                 <Button 
                   onClick={handleSaveAndEmail}
                   disabled={isSendingEmail}
+                  variant="outline"
                 >
                   {isSendingEmail ? (
                     <Loader2 size={20} className="mr-2 animate-spin" />
                   ) : (
                     <Mail size={20} className="mr-2" />
                   )}
-                  {isSendingEmail ? 'Sending...' : 'Save & Email'}
+                  {isSendingEmail ? 'Sending...' : 'Email'}
                 </Button>
               </>
             )}
@@ -1330,6 +1452,118 @@ const FreeIndependent = () => {
                       placeholder="Add any special notes or requests for this day..."
                     />
                   </div>
+
+                  {/* Cost Inputs - Show when enabled */}
+                  {showCostInputs && (
+                    <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      <h5 className="text-sm font-semibold mb-3 flex items-center text-emerald-700 dark:text-emerald-300">
+                        <DollarSign size={16} className="mr-1" /> Day {index + 1} Costs (USD)
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {hotel && (
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Hotel</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.hotel_cost || ''}
+                              onChange={(e) =>
+                                updateMutation.mutate({
+                                  id: item.id,
+                                  field: 'hotel_cost',
+                                  value: e.target.value,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        )}
+                        {activity && (
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Activity</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.activity_cost || ''}
+                              onChange={(e) =>
+                                updateMutation.mutate({
+                                  id: item.id,
+                                  field: 'activity_cost',
+                                  value: e.target.value,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        )}
+                        {car && (
+                          <div>
+                            <label className="text-xs text-muted-foreground block mb-1">Car/Day</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.car_cost || ''}
+                              onChange={(e) =>
+                                updateMutation.mutate({
+                                  id: item.id,
+                                  field: 'car_cost',
+                                  value: e.target.value,
+                                })
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">Transport</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.transport_cost || ''}
+                            onChange={(e) =>
+                              updateMutation.mutate({
+                                id: item.id,
+                                field: 'transport_cost',
+                                value: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">Other</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.other_cost || ''}
+                            onChange={(e) =>
+                              updateMutation.mutate({
+                                id: item.id,
+                                field: 'other_cost',
+                                value: e.target.value,
+                              })
+                            }
+                            className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                      {/* Day total */}
+                      <div className="mt-2 text-right text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                        Day Total: ${((Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
+                          (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0)).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1375,6 +1609,56 @@ const FreeIndependent = () => {
                 </div>
               </div>
 
+              {/* Cost Summary - Show when costs have been added */}
+              {grandTotal > 0 && (
+                <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border-2 border-emerald-500">
+                  <h4 className="font-semibold mb-4 flex items-center text-emerald-700 dark:text-emerald-300">
+                    <DollarSign size={20} className="mr-2" /> Total Trip Cost
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                    {totalCosts.hotel > 0 && (
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">🏨 Hotels</div>
+                        <div className="text-lg font-bold text-primary">${totalCosts.hotel.toFixed(2)}</div>
+                      </div>
+                    )}
+                    {totalCosts.activity > 0 && (
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">🎯 Activities</div>
+                        <div className="text-lg font-bold text-primary">${totalCosts.activity.toFixed(2)}</div>
+                      </div>
+                    )}
+                    {totalCosts.car > 0 && (
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">🚗 Car Rental</div>
+                        <div className="text-lg font-bold text-primary">${totalCosts.car.toFixed(2)}</div>
+                      </div>
+                    )}
+                    {totalCosts.transport > 0 && (
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">⛽ Transport</div>
+                        <div className="text-lg font-bold text-primary">${totalCosts.transport.toFixed(2)}</div>
+                      </div>
+                    )}
+                    {totalCosts.other > 0 && (
+                      <div className="text-center p-3 bg-background rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">📦 Other</div>
+                        <div className="text-lg font-bold text-primary">${totalCosts.other.toFixed(2)}</div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-center p-4 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">Grand Total</div>
+                    <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
+                      ${grandTotal.toFixed(2)}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {itinerary.length} days • ${(grandTotal / itinerary.length).toFixed(2)}/day average
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Booking Progress */}
               <div className="mb-6">
                 <h4 className="font-semibold mb-3">Booking Progress</h4>
@@ -1383,6 +1667,8 @@ const FreeIndependent = () => {
                     const destination = destinations?.find(d => d.id === item.destination_id);
                     const hotel = hotels?.find(h => h.id === item.hotel_id);
                     const activity = activities?.find(a => a.id === item.activity_id);
+                    const dayCost = (Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
+                                    (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0);
                     
                     return (
                       <div key={item.id} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border">
@@ -1391,6 +1677,11 @@ const FreeIndependent = () => {
                           <span className="text-sm text-muted-foreground">{destination?.name}</span>
                         </div>
                         <div className="flex items-center gap-4">
+                          {dayCost > 0 && (
+                            <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                              ${dayCost.toFixed(2)}
+                            </span>
+                          )}
                           {hotel && (
                             <div className="flex items-center gap-1 text-sm">
                               <Hotel size={14} />
@@ -1418,22 +1709,58 @@ const FreeIndependent = () => {
                 </div>
               </div>
 
-              {/* Confirm All Button */}
-              <div className="text-center pt-4 border-t border-border">
+              {/* Action Buttons */}
+              <div className="text-center pt-4 border-t border-border space-y-4">
                 {allItemsBooked ? (
-                  <Button size="lg" onClick={confirmAllBookings} className="px-8">
-                    <CheckCircle2 size={20} className="mr-2" />
-                    Confirm All Bookings
-                  </Button>
-                ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Please complete all bookings above before confirming.
-                    </p>
-                    <Button size="lg" disabled className="px-8">
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button size="lg" onClick={confirmAllBookings} className="px-8">
                       <CheckCircle2 size={20} className="mr-2" />
                       Confirm All Bookings
                     </Button>
+                    {grandTotal > 0 && (
+                      <Button 
+                        size="lg" 
+                        onClick={handleSaveAsPackage}
+                        disabled={isSavingPackage}
+                        variant="outline"
+                        className="px-8 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                      >
+                        {isSavingPackage ? (
+                          <Loader2 size={20} className="mr-2 animate-spin" />
+                        ) : (
+                          <Package size={20} className="mr-2" />
+                        )}
+                        {isSavingPackage ? 'Saving...' : 'Save as Package'}
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Complete all bookings and add costs, then save as a package.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button size="lg" disabled className="px-8">
+                        <CheckCircle2 size={20} className="mr-2" />
+                        Confirm All Bookings
+                      </Button>
+                      {grandTotal > 0 && (
+                        <Button 
+                          size="lg" 
+                          onClick={handleSaveAsPackage}
+                          disabled={isSavingPackage}
+                          variant="outline"
+                          className="px-8 border-emerald-500 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950"
+                        >
+                          {isSavingPackage ? (
+                            <Loader2 size={20} className="mr-2 animate-spin" />
+                          ) : (
+                            <Package size={20} className="mr-2" />
+                          )}
+                          {isSavingPackage ? 'Saving...' : 'Save as Package'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

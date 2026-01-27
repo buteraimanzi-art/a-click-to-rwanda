@@ -134,9 +134,11 @@ export type Database = {
       itineraries: {
         Row: {
           activity_booked: boolean | null
+          activity_cost: number | null
           activity_id: string | null
           all_confirmed: boolean | null
           breakfast_time: string | null
+          car_cost: number | null
           car_id: string | null
           created_at: string | null
           date: string
@@ -144,21 +146,26 @@ export type Database = {
           destination_id: string
           dinner_time: string | null
           hotel_booked: boolean | null
+          hotel_cost: number | null
           hotel_id: string | null
           id: string
           is_booked: boolean | null
           lunch_time: string | null
           notes: string | null
           origin_id: string | null
+          other_cost: number | null
+          transport_cost: number | null
           updated_at: string | null
           user_id: string
           wake_time: string | null
         }
         Insert: {
           activity_booked?: boolean | null
+          activity_cost?: number | null
           activity_id?: string | null
           all_confirmed?: boolean | null
           breakfast_time?: string | null
+          car_cost?: number | null
           car_id?: string | null
           created_at?: string | null
           date: string
@@ -166,21 +173,26 @@ export type Database = {
           destination_id: string
           dinner_time?: string | null
           hotel_booked?: boolean | null
+          hotel_cost?: number | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
           lunch_time?: string | null
           notes?: string | null
           origin_id?: string | null
+          other_cost?: number | null
+          transport_cost?: number | null
           updated_at?: string | null
           user_id: string
           wake_time?: string | null
         }
         Update: {
           activity_booked?: boolean | null
+          activity_cost?: number | null
           activity_id?: string | null
           all_confirmed?: boolean | null
           breakfast_time?: string | null
+          car_cost?: number | null
           car_id?: string | null
           created_at?: string | null
           date?: string
@@ -188,12 +200,15 @@ export type Database = {
           destination_id?: string
           dinner_time?: string | null
           hotel_booked?: boolean | null
+          hotel_cost?: number | null
           hotel_id?: string | null
           id?: string
           is_booked?: boolean | null
           lunch_time?: string | null
           notes?: string | null
           origin_id?: string | null
+          other_cost?: number | null
+          transport_cost?: number | null
           updated_at?: string | null
           user_id?: string
           wake_time?: string | null
