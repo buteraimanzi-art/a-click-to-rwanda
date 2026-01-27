@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -15,6 +15,9 @@ import {
   startNotificationChecker,
   sendTestNotification,
 } from '@/lib/notifications';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { ItineraryProgress } from '@/components/itinerary/ItineraryProgress';
+import { SmartSuggestions } from '@/components/itinerary/SmartSuggestions';
 
 // Hotel-specific booking URLs
 const HOTEL_BOOKING_URLS: Record<string, string> = {
@@ -100,6 +103,7 @@ const FreeIndependent = () => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
   const [showCostInputs, setShowCostInputs] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -354,6 +358,49 @@ const FreeIndependent = () => {
       toast.success('Item removed');
     },
   });
+
+  // Reorder mutation for drag and drop
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: Array<{ id: string; date: string }>) => {
+      // Update each item's date to match new order
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('itineraries')
+          .update({ date: update.date })
+          .eq('id', update.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['itinerary'] });
+      toast.success('Itinerary reordered');
+    },
+    onError: () => {
+      toast.error('Failed to reorder itinerary');
+    },
+  });
+
+  // Handle drag end
+  const handleDragEnd = (result: DropResult) => {
+    setIsDragging(false);
+    
+    if (!result.destination || result.source.index === result.destination.index) {
+      return;
+    }
+
+    const items = Array.from(itinerary);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Swap dates between the items to maintain chronological order
+    const dates = itinerary.map(item => item.date);
+    const updates = items.map((item, index) => ({
+      id: item.id,
+      date: dates[index],
+    }));
+
+    reorderMutation.mutate(updates);
+  };
 
   const handleDownload = () => {
     const htmlContent = `
@@ -1124,6 +1171,18 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
           </div>
         </div>
         
+        {/* Smart Suggestions */}
+        {selectedDestination && (
+          <SmartSuggestions
+            selectedDestination={selectedDestination}
+            destinations={destinations}
+            hotels={hotels}
+            activities={activities}
+            onSelectHotel={(hotelId) => setSelectedHotel(hotelId)}
+            onSelectActivity={(activityId) => setSelectedActivity(activityId)}
+          />
+        )}
+
         <Button 
           onClick={() => addMutation.mutate()} 
           disabled={
@@ -1137,6 +1196,9 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
           <Plus size={20} className="mr-2" /> Add Day
         </Button>
       </div>
+
+      {/* Progress Indicator */}
+      <ItineraryProgress itinerary={itinerary} />
 
       <div className="bg-card rounded-lg shadow-lg p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
@@ -1200,374 +1262,393 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
             Your itinerary is empty. Add days above to get started.
           </p>
         ) : (
-          <div className="space-y-4">
-            {itinerary.map((item, index) => {
-              const destination = destinations?.find((d) => d.id === item.destination_id);
-              const origin = destinations?.find((d) => d.id === item.origin_id);
-              const hotel = hotels?.find((h) => h.id === item.hotel_id);
-              const car = cars?.find((c) => c.id === item.car_id);
-              const activity = activities?.find((a) => a.id === item.activity_id);
-              const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              });
+          <DragDropContext onDragStart={() => setIsDragging(true)} onDragEnd={handleDragEnd}>
+            <Droppable droppableId="itinerary">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
+                >
+                  {itinerary.map((item, index) => {
+                    const destination = destinations?.find((d) => d.id === item.destination_id);
+                    const origin = destinations?.find((d) => d.id === item.origin_id);
+                    const hotel = hotels?.find((h) => h.id === item.hotel_id);
+                    const car = cars?.find((c) => c.id === item.car_id);
+                    const activity = activities?.find((a) => a.id === item.activity_id);
+                    const formattedDate = new Date(item.date).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    });
 
-              const isTransfer = item.day_type === 'transfer';
+                    const isTransfer = item.day_type === 'transfer';
 
-              // Calculate distance and travel time for transfer days
-              let distance: number | null = null;
-              let travelTime: string | null = null;
-              if (isTransfer && origin?.latitude && origin?.longitude && destination?.latitude && destination?.longitude) {
-                distance = calculateDistance(
-                  origin.latitude,
-                  origin.longitude,
-                  destination.latitude,
-                  destination.longitude
-                );
-                travelTime = estimateTravelTime(distance);
-              }
+                    // Calculate distance and travel time for transfer days
+                    let distance: number | null = null;
+                    let travelTime: string | null = null;
+                    if (isTransfer && origin?.latitude && origin?.longitude && destination?.latitude && destination?.longitude) {
+                      distance = calculateDistance(
+                        origin.latitude,
+                        origin.longitude,
+                        destination.latitude,
+                        destination.longitude
+                      );
+                      travelTime = estimateTravelTime(distance);
+                    }
 
-              return (
-                <div key={item.id} className="border border-border rounded-lg p-5 bg-background/50">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
-                      {isTransfer && (
-                        <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
-                          Transfer
-                        </span>
-                      )}
-                      <h4 className="text-2xl font-bold text-primary">
-                        {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        <Calendar size={14} className="inline mr-1" />
-                        {formattedDate}
-                      </p>
-                      {isTransfer && distance && travelTime && (
-                        <div className="mt-2 flex gap-4 text-sm">
-                          <span className="text-primary font-medium">
-                            📏 {formatDistance(distance)}
-                          </span>
-                          <span className="text-primary font-medium">
-                            🕐 {travelTime}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(item.id)}
-                    >
-                      <Trash2 size={18} />
-                    </Button>
-                  </div>
+                    return (
+                      <Draggable key={item.id} draggableId={item.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`border border-border rounded-lg p-5 bg-background/50 transition-shadow ${
+                              snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-start gap-3 flex-1">
+                                {/* Drag Handle */}
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="mt-1 p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+                                  title="Drag to reorder"
+                                >
+                                  <GripVertical size={20} className="text-muted-foreground" />
+                                </div>
+                                
+                                <div className="flex-1">
+                                  <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
+                                  {isTransfer && (
+                                    <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
+                                      Transfer
+                                    </span>
+                                  )}
+                                  <h4 className="text-2xl font-bold text-primary">
+                                    {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    <Calendar size={14} className="inline mr-1" />
+                                    {formattedDate}
+                                  </p>
+                                  {isTransfer && distance && travelTime && (
+                                    <div className="mt-2 flex gap-4 text-sm">
+                                      <span className="text-primary font-medium">
+                                        📏 {formatDistance(distance)}
+                                      </span>
+                                      <span className="text-primary font-medium">
+                                        🕐 {travelTime}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteMutation.mutate(item.id)}
+                              >
+                                <Trash2 size={18} />
+                              </Button>
+                            </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
-                      <input
-                        type="date"
-                        value={item.date || ''}
-                        onChange={(e) =>
-                          updateMutation.mutate({
-                            id: item.id,
-                            field: 'date',
-                            value: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                      />
-                    </div>
-                    
-                    {/* Hotel selection - available for both regular and transfer days */}
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                        Hotel {isTransfer ? '(at destination)' : ''}
-                      </label>
-                      <select
-                        value={item.hotel_id || ''}
-                        onChange={(e) =>
-                          updateMutation.mutate({
-                            id: item.id,
-                            field: 'hotel_id',
-                            value: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                      >
-                        <option value="">Not selected</option>
-                        {hotels
-                          ?.filter((h) => h.destination_id === item.destination_id)
-                          .map((h) => (
-                            <option key={h.id} value={h.id}>
-                              {h.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                              <div>
+                                <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
+                                <input
+                                  type="date"
+                                  value={item.date || ''}
+                                  onChange={(e) =>
+                                    updateMutation.mutate({
+                                      id: item.id,
+                                      field: 'date',
+                                      value: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                                />
+                              </div>
+                              
+                              {/* Hotel selection - available for both regular and transfer days */}
+                              <div>
+                                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                                  Hotel {isTransfer ? '(at destination)' : ''}
+                                </label>
+                                <select
+                                  value={item.hotel_id || ''}
+                                  onChange={(e) =>
+                                    updateMutation.mutate({
+                                      id: item.id,
+                                      field: 'hotel_id',
+                                      value: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                                >
+                                  <option value="">Not selected</option>
+                                  {hotels
+                                    ?.filter((h) => h.destination_id === item.destination_id)
+                                    .map((h) => (
+                                      <option key={h.id} value={h.id}>
+                                        {h.name}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
 
-                    {!isTransfer && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
-                        <select
-                          value={item.activity_id || ''}
-                          onChange={(e) =>
-                            updateMutation.mutate({
-                              id: item.id,
-                              field: 'activity_id',
-                              value: e.target.value,
-                            })
-                          }
-                          className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                        >
-                          <option value="">Not selected</option>
-                          {activities
-                            ?.filter((a) => a.destination_id === item.destination_id)
-                            .map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    )}
+                              {!isTransfer && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Activity</label>
+                                  <select
+                                    value={item.activity_id || ''}
+                                    onChange={(e) =>
+                                      updateMutation.mutate({
+                                        id: item.id,
+                                        field: 'activity_id',
+                                        value: e.target.value,
+                                      })
+                                    }
+                                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                                  >
+                                    <option value="">Not selected</option>
+                                    {activities
+                                      ?.filter((a) => a.destination_id === item.destination_id)
+                                      .map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                          {a.name}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </div>
+                              )}
 
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Car</label>
-                      <select
-                        value={item.car_id || ''}
-                        onChange={(e) =>
-                          updateMutation.mutate({
-                            id: item.id,
-                            field: 'car_id',
-                            value: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                      >
-                        <option value="">Not selected</option>
-                        {cars?.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                              <div>
+                                <label className="text-xs font-medium text-muted-foreground mb-1 block">Car</label>
+                                <select
+                                  value={item.car_id || ''}
+                                  onChange={(e) =>
+                                    updateMutation.mutate({
+                                      id: item.id,
+                                      field: 'car_id',
+                                      value: e.target.value,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
+                                >
+                                  <option value="">Not selected</option>
+                                  {cars?.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
 
-                  {hotel && (
-                    <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleBookingStatus(item.id, 'hotel_booked', item.hotel_booked || false)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            item.hotel_booked 
-                              ? 'bg-primary border-primary text-primary-foreground' 
-                              : 'border-muted-foreground hover:border-primary'
-                          }`}
-                        >
-                          {item.hotel_booked && <Check size={12} />}
-                        </button>
-                        <Hotel size={16} className="text-muted-foreground" />
-                        <span className={item.hotel_booked ? 'line-through text-muted-foreground' : ''}>
-                          {hotel.name}
-                        </span>
-                        {item.hotel_booked && (
-                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
-                        )}
-                      </div>
-                      {(HOTEL_BOOKING_URLS[item.hotel_id || ''] || getBookingUrl(item.destination_id, 'hotel', item.hotel_id)) && !item.hotel_booked && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank')}
-                          className="ml-2"
-                        >
-                          <ExternalLink size={14} className="mr-1" />
-                          Book Hotel
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                            {hotel && (
+                              <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => toggleBookingStatus(item.id, 'hotel_booked', item.hotel_booked || false)}
+                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                      item.hotel_booked 
+                                        ? 'bg-primary border-primary text-primary-foreground' 
+                                        : 'border-muted-foreground hover:border-primary'
+                                    }`}
+                                  >
+                                    {item.hotel_booked && <Check size={12} />}
+                                  </button>
+                                  <Hotel size={16} className="text-muted-foreground" />
+                                  <span className={item.hotel_booked ? 'line-through text-muted-foreground' : ''}>
+                                    {hotel.name}
+                                  </span>
+                                  {item.hotel_booked && (
+                                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
+                                  )}
+                                </div>
+                                {(HOTEL_BOOKING_URLS[item.hotel_id || ''] || getBookingUrl(item.destination_id, 'hotel', item.hotel_id)) && !item.hotel_booked && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank')}
+                                    className="ml-2"
+                                  >
+                                    <ExternalLink size={14} className="mr-1" />
+                                    Book Hotel
+                                  </Button>
+                                )}
+                              </div>
+                            )}
 
-                  {car && (
-                    <div className="flex items-center gap-2 text-sm mb-2 p-2 rounded-md bg-muted/30">
-                      <Car size={16} className="text-muted-foreground" />
-                      <span className="font-medium">Vehicle:</span> {car.name}
-                    </div>
-                  )}
-                  
-                  {activity && (
-                    <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => toggleBookingStatus(item.id, 'activity_booked', item.activity_booked || false)}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                            item.activity_booked 
-                              ? 'bg-primary border-primary text-primary-foreground' 
-                              : 'border-muted-foreground hover:border-primary'
-                          }`}
-                        >
-                          {item.activity_booked && <Check size={12} />}
-                        </button>
-                        <MapPin size={16} className="text-muted-foreground" />
-                        <span className={item.activity_booked ? 'line-through text-muted-foreground' : ''}>
-                          {activity.name}
-                        </span>
-                        {item.activity_booked && (
-                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
-                        )}
-                      </div>
-                      {getBookingUrl(item.destination_id, 'destination') && !item.activity_booked && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank')}
-                          className="ml-2"
-                        >
-                          <ExternalLink size={14} className="mr-1" />
-                          Book Activity
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                            {car && (
+                              <div className="flex items-center gap-2 text-sm mb-2 p-2 rounded-md bg-muted/30">
+                                <Car size={16} className="text-muted-foreground" />
+                                <span>{car.name}</span>
+                              </div>
+                            )}
 
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
-                    <textarea
-                      value={item.notes || ''}
-                      onChange={(e) =>
-                        updateMutation.mutate({
-                          id: item.id,
-                          field: 'notes',
-                          value: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm"
-                      rows={2}
-                      placeholder="Add any special notes or requests for this day..."
-                    />
-                  </div>
+                            {activity && (
+                              <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => toggleBookingStatus(item.id, 'activity_booked', item.activity_booked || false)}
+                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                      item.activity_booked 
+                                        ? 'bg-primary border-primary text-primary-foreground' 
+                                        : 'border-muted-foreground hover:border-primary'
+                                    }`}
+                                  >
+                                    {item.activity_booked && <Check size={12} />}
+                                  </button>
+                                  <MapPin size={16} className="text-muted-foreground" />
+                                  <span className={item.activity_booked ? 'line-through text-muted-foreground' : ''}>
+                                    {activity.name}
+                                  </span>
+                                  {item.activity_booked && (
+                                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Booked</span>
+                                  )}
+                                </div>
+                                {getBookingUrl(item.destination_id, 'destination') && !item.activity_booked && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank')}
+                                    className="ml-2"
+                                  >
+                                    <ExternalLink size={14} className="mr-1" />
+                                    Book Activity
+                                  </Button>
+                                )}
+                              </div>
+                            )}
 
-                  {/* Cost Inputs - Show when enabled */}
-                  {showCostInputs && (
-                    <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                      <h5 className="text-sm font-semibold mb-3 flex items-center text-emerald-700 dark:text-emerald-300">
-                        <DollarSign size={16} className="mr-1" /> Day {index + 1} Costs (USD)
-                      </h5>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        {hotel && (
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Hotel</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.hotel_cost || ''}
-                              onChange={(e) =>
-                                updateMutation.mutate({
-                                  id: item.id,
-                                  field: 'hotel_cost',
-                                  value: e.target.value,
-                                })
-                              }
-                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
-                              placeholder="0.00"
-                            />
+                            {/* Notes */}
+                            {item.notes && (
+                              <div className="text-sm text-muted-foreground italic bg-muted/20 p-2 rounded mt-2">
+                                📝 {item.notes}
+                              </div>
+                            )}
+
+                            {/* Cost inputs */}
+                            {showCostInputs && (
+                              <div className="mt-4 p-3 bg-muted/20 rounded-lg border border-border">
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                  {hotel && (
+                                    <div>
+                                      <label className="text-xs text-muted-foreground block mb-1">Hotel ($)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.hotel_cost || ''}
+                                        onChange={(e) =>
+                                          updateMutation.mutate({
+                                            id: item.id,
+                                            field: 'hotel_cost',
+                                            value: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  )}
+                                  {activity && (
+                                    <div>
+                                      <label className="text-xs text-muted-foreground block mb-1">Activity ($)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.activity_cost || ''}
+                                        onChange={(e) =>
+                                          updateMutation.mutate({
+                                            id: item.id,
+                                            field: 'activity_cost',
+                                            value: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  )}
+                                  {car && (
+                                    <div>
+                                      <label className="text-xs text-muted-foreground block mb-1">Car/Day ($)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={item.car_cost || ''}
+                                        onChange={(e) =>
+                                          updateMutation.mutate({
+                                            id: item.id,
+                                            field: 'car_cost',
+                                            value: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <label className="text-xs text-muted-foreground block mb-1">Transport ($)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.transport_cost || ''}
+                                      onChange={(e) =>
+                                        updateMutation.mutate({
+                                          id: item.id,
+                                          field: 'transport_cost',
+                                          value: e.target.value,
+                                        })
+                                      }
+                                      className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-muted-foreground block mb-1">Other ($)</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.other_cost || ''}
+                                      onChange={(e) =>
+                                        updateMutation.mutate({
+                                          id: item.id,
+                                          field: 'other_cost',
+                                          value: e.target.value,
+                                        })
+                                      }
+                                      className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                </div>
+                                {/* Day total */}
+                                <div className="mt-2 text-right text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                                  Day Total: ${((Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
+                                    (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0)).toFixed(2)}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
-                        {activity && (
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Activity</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.activity_cost || ''}
-                              onChange={(e) =>
-                                updateMutation.mutate({
-                                  id: item.id,
-                                  field: 'activity_cost',
-                                  value: e.target.value,
-                                })
-                              }
-                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        )}
-                        {car && (
-                          <div>
-                            <label className="text-xs text-muted-foreground block mb-1">Car/Day</label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.car_cost || ''}
-                              onChange={(e) =>
-                                updateMutation.mutate({
-                                  id: item.id,
-                                  field: 'car_cost',
-                                  value: e.target.value,
-                                })
-                              }
-                              className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <label className="text-xs text-muted-foreground block mb-1">Transport</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.transport_cost || ''}
-                            onChange={(e) =>
-                              updateMutation.mutate({
-                                id: item.id,
-                                field: 'transport_cost',
-                                value: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
-                            placeholder="0.00"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground block mb-1">Other</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.other_cost || ''}
-                            onChange={(e) =>
-                              updateMutation.mutate({
-                                id: item.id,
-                                field: 'other_cost',
-                                value: e.target.value,
-                              })
-                            }
-                            className="w-full px-2 py-1.5 text-sm border border-input rounded bg-background"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-                      {/* Day total */}
-                      <div className="mt-2 text-right text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                        Day Total: ${((Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
-                          (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0)).toFixed(2)}
-                      </div>
-                    </div>
-                  )}
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         )}
       </div>
 
