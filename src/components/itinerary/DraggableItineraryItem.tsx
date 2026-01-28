@@ -1,7 +1,8 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, Calendar, Hotel, MapPin, Car, Check, ExternalLink } from 'lucide-react';
+import { GripVertical, Trash2, Calendar, Hotel, MapPin, Car, Check, ExternalLink, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
+import { getDestinationImage } from '@/lib/destinationImages';
 
 interface ItineraryItemData {
   id: string;
@@ -79,43 +80,88 @@ export const DraggableItineraryItem = ({
     travelTime = estimateTravelTime(distance);
   }
 
+  // Get destination image
+  const destinationImage = getDestinationImage(item.destination_id);
+  const originImage = isTransfer ? getDestinationImage(item.origin_id || '') : null;
+
   return (
     <Draggable draggableId={item.id} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`border border-border rounded-lg p-5 bg-background/50 transition-shadow ${
+          className={`border border-border rounded-lg overflow-hidden bg-background/50 transition-shadow ${
             snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
           }`}
         >
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-start gap-3 flex-1">
-              {/* Drag Handle */}
-              <div
-                {...provided.dragHandleProps}
-                className="mt-1 p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
-                title="Drag to reorder"
-              >
-                <GripVertical size={20} className="text-muted-foreground" />
-              </div>
-              
-              <div className="flex-1">
-                <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
+          {/* Destination Image Header */}
+          {destinationImage && (
+            <div className="relative h-40 w-full overflow-hidden">
+              <img 
+                src={destinationImage} 
+                alt={destination?.name || 'Destination'} 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                <div className="text-xs font-medium opacity-90">Day {index + 1}</div>
                 {isTransfer && (
-                  <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
+                  <span className="inline-block bg-yellow-500 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold mb-1">
                     Transfer
                   </span>
                 )}
-                <h4 className="text-2xl font-bold text-primary">
+                <h4 className="text-xl font-bold">
                   {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
                 </h4>
-                <p className="text-sm text-muted-foreground mt-1">
+              </div>
+              {/* Drag Handle on Image */}
+              <div
+                {...provided.dragHandleProps}
+                className="absolute top-2 right-2 p-2 rounded-full bg-black/40 hover:bg-black/60 cursor-grab active:cursor-grabbing"
+                title="Drag to reorder"
+              >
+                <GripVertical size={18} className="text-white" />
+              </div>
+            </div>
+          )}
+
+          <div className="p-5">
+            {/* Fallback header when no image */}
+            {!destinationImage && (
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-start gap-3 flex-1">
+                  <div
+                    {...provided.dragHandleProps}
+                    className="mt-1 p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+                    title="Drag to reorder"
+                  >
+                    <GripVertical size={20} className="text-muted-foreground" />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground font-medium">Day {index + 1}</div>
+                    {isTransfer && (
+                      <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
+                        Transfer
+                      </span>
+                    )}
+                    <h4 className="text-2xl font-bold text-primary">
+                      {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
+                    </h4>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Date and Travel Info */}
+            <div className="flex justify-between items-center mb-3">
+              <div>
+                <p className="text-sm text-muted-foreground">
                   <Calendar size={14} className="inline mr-1" />
                   {formattedDate}
                 </p>
                 {isTransfer && distance && travelTime && (
-                  <div className="mt-2 flex gap-4 text-sm">
+                  <div className="mt-1 flex gap-4 text-sm">
                     <span className="text-primary font-medium">
                       📏 {formatDistance(distance)}
                     </span>
@@ -125,15 +171,14 @@ export const DraggableItineraryItem = ({
                   </div>
                 )}
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(item.id)}
+              >
+                <Trash2 size={18} />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(item.id)}
-            >
-              <Trash2 size={18} />
-            </Button>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
             <div>
@@ -360,6 +405,7 @@ export const DraggableItineraryItem = ({
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
     </Draggable>

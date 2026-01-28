@@ -20,6 +20,7 @@ import { ItineraryProgress } from '@/components/itinerary/ItineraryProgress';
 import { SmartSuggestions } from '@/components/itinerary/SmartSuggestions';
 import { ItineraryCalendarView } from '@/components/itinerary/ItineraryCalendarView';
 import { isPast, isToday } from 'date-fns';
+import { getDestinationImage } from '@/lib/destinationImages';
 
 // Hotel-specific booking URLs
 const HOTEL_BOOKING_URLS: Record<string, string> = {
@@ -407,6 +408,25 @@ const FreeIndependent = () => {
   };
 
   const handleDownload = () => {
+    // Helper function to get destination image URL
+    const getDestinationImageUrl = (destinationId: string): string => {
+      const imageUrls: Record<string, string> = {
+        'volcanoes': 'https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=600&q=80',
+        'musanze': 'https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=600&q=80',
+        'akagera': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=600&q=80',
+        'nyungwe': 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=600&q=80',
+        'lake-kivu': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+        'kivu': 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80',
+        'kigali': 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80',
+        'kings-palace': 'https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=600&q=80',
+        'kandt-house': 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80',
+        'campaign-genocide': 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80',
+        'rwanda-art': 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80',
+        'ethnographic': 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80',
+      };
+      return imageUrls[destinationId?.toLowerCase()] || 'https://images.unsplash.com/photo-1489749798305-4fea3ae63d43?w=600&q=80';
+    };
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -459,6 +479,19 @@ const FreeIndependent = () => {
             position: relative;
             z-index: 1;
           }
+          .section-divider {
+            background: linear-gradient(135deg, #145833, #1a5c3a);
+            color: white;
+            padding: 20px 30px;
+            margin-top: 0;
+          }
+          .section-divider h2 {
+            font-size: 1.8em;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
           .summary {
             background: #f8f9fa;
             padding: 25px 30px;
@@ -500,6 +533,11 @@ const FreeIndependent = () => {
             overflow: hidden;
             transition: transform 0.2s;
             background: white;
+          }
+          .day-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
           }
           .day-header {
             background: linear-gradient(135deg, #145833 0%, #1a5c3a 100%);
@@ -576,6 +614,87 @@ const FreeIndependent = () => {
             color: #78350f;
             line-height: 1.6;
           }
+          /* Cost Section Styles */
+          .cost-section {
+            padding: 30px;
+            background: #f8f9fa;
+          }
+          .cost-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          }
+          .cost-table th {
+            background: linear-gradient(135deg, #145833, #1a5c3a);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .cost-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .cost-table tr:last-child td {
+            border-bottom: none;
+          }
+          .cost-table tr:hover {
+            background: #f8f9fa;
+          }
+          .cost-amount {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #145833;
+          }
+          .cost-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+          }
+          .cost-summary-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #e5e7eb;
+          }
+          .cost-summary-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+          }
+          .cost-summary-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #145833;
+            font-family: 'Courier New', monospace;
+          }
+          .grand-total {
+            background: linear-gradient(135deg, #145833, #1a5c3a);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .grand-total-label {
+            font-size: 1.3em;
+            font-weight: 600;
+          }
+          .grand-total-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+          }
           .footer {
             background: #f8f9fa;
             padding: 25px;
@@ -583,16 +702,10 @@ const FreeIndependent = () => {
             color: #666;
             border-top: 2px solid #e5e7eb;
           }
-          .icon {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            margin-right: 8px;
-            vertical-align: middle;
-          }
           @media print {
             body { padding: 0; background: white; }
             .day-item { page-break-inside: avoid; }
+            .cost-section { page-break-before: always; }
           }
         </style>
       </head>
@@ -625,6 +738,11 @@ const FreeIndependent = () => {
             </div>
           </div>
 
+          <!-- SECTION 1: ITINERARY -->
+          <div class="section-divider">
+            <h2>📅 Itinerary Details</h2>
+          </div>
+
           <div class="itinerary">
             ${itinerary
               .map((item, index) => {
@@ -641,8 +759,8 @@ const FreeIndependent = () => {
                 });
 
                 const isTransfer = item.day_type === 'transfer';
-                let distance = null;
-                let travelTime = null;
+                let distance: number | null = null;
+                let travelTime: string | null = null;
                 if (isTransfer && origin?.latitude && origin?.longitude && destination?.latitude && destination?.longitude) {
                   const R = 6371;
                   const dLat = (destination.latitude - origin.latitude) * Math.PI / 180;
@@ -653,75 +771,111 @@ const FreeIndependent = () => {
                   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                   distance = Math.round(R * c);
                   const totalMinutes = Math.round((distance / 45) * 60);
-                  travelTime = totalMinutes < 60 ? `${totalMinutes} min` : `${Math.floor(totalMinutes/60)}h ${totalMinutes%60 > 0 ? totalMinutes%60+'min' : ''}`.trim();
+                  travelTime = totalMinutes < 60 ? totalMinutes + ' min' : Math.floor(totalMinutes/60) + 'h ' + (totalMinutes%60 > 0 ? totalMinutes%60+'min' : '');
                 }
 
-                return `
-                <div class="day-item">
-                  <div class="day-header">
-                    <div>
-                      <div class="day-number">Day ${index + 1}</div>
-                      <div class="day-title">${isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name || 'Destination'}</div>
-                      <div class="day-date">📅 ${formattedDate}</div>
-                      ${isTransfer && distance && travelTime ? `
-                        <div style="margin-top: 8px; font-size: 0.95em; opacity: 0.95;">
-                          <span style="margin-right: 15px;">📏 ${distance} km</span>
-                          <span>🕐 ${travelTime}</span>
-                        </div>
-                      ` : ''}
-                    </div>
-                  </div>
-                  <div class="day-content">
-                    ${isTransfer ? '<span class="transfer-badge">🚗 Transfer Day</span>' : ''}
-                    
-                    <div class="detail-grid">
-                      ${isTransfer ? `
-                        <div class="detail-item">
-                          <div class="detail-label">From</div>
-                          <div class="detail-value">${origin?.name || 'Not specified'}</div>
-                        </div>
-                        <div class="detail-item">
-                          <div class="detail-label">To</div>
-                          <div class="detail-value">${destination?.name || 'Not specified'}</div>
-                        </div>
-                      ` : `
-                        <div class="detail-item">
-                          <div class="detail-label">📍 Location</div>
-                          <div class="detail-value">${destination?.name || 'Not specified'}</div>
-                        </div>
-                      `}
-                      
-                      ${hotel ? `
-                        <div class="detail-item">
-                          <div class="detail-label">🏨 Accommodation</div>
-                          <div class="detail-value">${hotel.name}</div>
-                        </div>
-                      ` : ''}
-                      
-                      ${car ? `
-                        <div class="detail-item">
-                          <div class="detail-label">🚙 Vehicle</div>
-                          <div class="detail-value">${car.name}</div>
-                        </div>
-                      ` : ''}
-                      
-                      ${activity ? `
-                        <div class="detail-item">
-                          <div class="detail-label">🎯 Activity</div>
-                          <div class="detail-value">${activity.name}</div>
-                        </div>
-                      ` : ''}
-                    </div>
-                    
-                    ${item.notes ? `
-                      <div class="notes-section">
-                        <div class="notes-label">📝 Notes</div>
-                        <div class="notes-text">${item.notes}</div>
-                      </div>
-                    ` : ''}
-                  </div>
-                </div>
-              `}).join('')}
+                const imageUrl = getDestinationImageUrl(item.destination_id);
+                const dayTitle = isTransfer 
+                  ? (origin?.name || 'Origin') + ' → ' + (destination?.name || 'Destination')
+                  : (destination?.name || 'Destination');
+                const distanceInfo = isTransfer && distance && travelTime 
+                  ? '<div style="margin-top: 8px; font-size: 0.95em; opacity: 0.95;"><span style="margin-right: 15px;">📏 ' + distance + ' km</span><span>🕐 ' + travelTime + '</span></div>'
+                  : '';
+                const transferBadge = isTransfer ? '<span class="transfer-badge">🚗 Transfer Day</span>' : '';
+                const locationDetails = isTransfer 
+                  ? '<div class="detail-item"><div class="detail-label">From</div><div class="detail-value">' + (origin?.name || 'Not specified') + '</div></div><div class="detail-item"><div class="detail-label">To</div><div class="detail-value">' + (destination?.name || 'Not specified') + '</div></div>'
+                  : '<div class="detail-item"><div class="detail-label">📍 Location</div><div class="detail-value">' + (destination?.name || 'Not specified') + '</div></div>';
+                const hotelDetails = hotel ? '<div class="detail-item"><div class="detail-label">🏨 Accommodation</div><div class="detail-value">' + hotel.name + '</div></div>' : '';
+                const carDetails = car ? '<div class="detail-item"><div class="detail-label">🚙 Vehicle</div><div class="detail-value">' + car.name + '</div></div>' : '';
+                const activityDetails = activity ? '<div class="detail-item"><div class="detail-label">🎯 Activity</div><div class="detail-value">' + activity.name + '</div></div>' : '';
+                const notesSection = item.notes ? '<div class="notes-section"><div class="notes-label">📝 Notes</div><div class="notes-text">' + item.notes + '</div></div>' : '';
+
+                return '<div class="day-item">' +
+                  '<img src="' + imageUrl + '" alt="' + (destination?.name || 'Destination') + '" class="day-image" />' +
+                  '<div class="day-header"><div>' +
+                  '<div class="day-number">Day ' + (index + 1) + '</div>' +
+                  '<div class="day-title">' + dayTitle + '</div>' +
+                  '<div class="day-date">📅 ' + formattedDate + '</div>' +
+                  distanceInfo +
+                  '</div></div>' +
+                  '<div class="day-content">' +
+                  transferBadge +
+                  '<div class="detail-grid">' +
+                  locationDetails +
+                  hotelDetails +
+                  carDetails +
+                  activityDetails +
+                  '</div>' +
+                  notesSection +
+                  '</div></div>';
+              }).join('')}
+          </div>
+
+          <!-- SECTION 2: COST BREAKDOWN -->
+          <div class="section-divider">
+            <h2>💰 Cost Breakdown</h2>
+          </div>
+
+          <div class="cost-section">
+            <div class="cost-summary-grid">
+              <div class="cost-summary-item">
+                <div class="cost-summary-label">🏨 Hotels</div>
+                <div class="cost-summary-value">$${totalCosts.hotel.toFixed(2)}</div>
+              </div>
+              <div class="cost-summary-item">
+                <div class="cost-summary-label">🎯 Activities</div>
+                <div class="cost-summary-value">$${totalCosts.activity.toFixed(2)}</div>
+              </div>
+              <div class="cost-summary-item">
+                <div class="cost-summary-label">🚙 Car Rental</div>
+                <div class="cost-summary-value">$${totalCosts.car.toFixed(2)}</div>
+              </div>
+              <div class="cost-summary-item">
+                <div class="cost-summary-label">🚌 Transport</div>
+                <div class="cost-summary-value">$${totalCosts.transport.toFixed(2)}</div>
+              </div>
+              <div class="cost-summary-item">
+                <div class="cost-summary-label">📦 Other</div>
+                <div class="cost-summary-value">$${totalCosts.other.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <table class="cost-table">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Destination</th>
+                  <th>Hotel</th>
+                  <th>Activity</th>
+                  <th>Car</th>
+                  <th>Transport</th>
+                  <th>Other</th>
+                  <th>Day Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itinerary.map((item, index) => {
+                  const destination = destinations?.find((d) => d.id === item.destination_id);
+                  const dayTotal = (Number(item.hotel_cost) || 0) + (Number(item.activity_cost) || 0) + 
+                    (Number(item.car_cost) || 0) + (Number(item.transport_cost) || 0) + (Number(item.other_cost) || 0);
+                  return '<tr>' +
+                    '<td>Day ' + (index + 1) + '</td>' +
+                    '<td>' + (destination?.name || 'N/A') + '</td>' +
+                    '<td class="cost-amount">$' + (Number(item.hotel_cost) || 0).toFixed(2) + '</td>' +
+                    '<td class="cost-amount">$' + (Number(item.activity_cost) || 0).toFixed(2) + '</td>' +
+                    '<td class="cost-amount">$' + (Number(item.car_cost) || 0).toFixed(2) + '</td>' +
+                    '<td class="cost-amount">$' + (Number(item.transport_cost) || 0).toFixed(2) + '</td>' +
+                    '<td class="cost-amount">$' + (Number(item.other_cost) || 0).toFixed(2) + '</td>' +
+                    '<td class="cost-amount"><strong>$' + dayTotal.toFixed(2) + '</strong></td>' +
+                    '</tr>';
+                }).join('')}
+              </tbody>
+            </table>
+
+            <div class="grand-total">
+              <div class="grand-total-label">💵 Grand Total</div>
+              <div class="grand-total-value">$${grandTotal.toFixed(2)}</div>
+            </div>
           </div>
 
           <div class="footer">
@@ -1391,6 +1545,9 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                       travelTime = estimateTravelTime(distance);
                     }
 
+                    // Get destination image
+                    const destinationImage = getDestinationImage(item.destination_id);
+
                     return (
                       <Draggable key={item.id} draggableId={item.id} index={index}>
                         {(provided, snapshot) => (
@@ -1398,29 +1555,36 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             className={cn(
-                              'border rounded-lg p-5 transition-shadow',
+                              'border rounded-lg overflow-hidden transition-shadow',
                               snapshot.isDragging && 'shadow-lg ring-2 ring-primary',
                               isPastDay && 'bg-destructive/10 border-destructive/50 opacity-80',
                               isTodayDay && 'bg-primary/10 border-primary ring-2 ring-primary/30',
                               !isPastDay && !isTodayDay && 'bg-background/50 border-border'
                             )}
                           >
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex items-start gap-3 flex-1">
-                                {/* Drag Handle */}
-                                <div
-                                  {...provided.dragHandleProps}
-                                  className="mt-1 p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
-                                  title="Drag to reorder"
-                                >
-                                  <GripVertical size={20} className="text-muted-foreground" />
+                            {/* Destination Image Header */}
+                            {destinationImage && (
+                              <div className="relative h-36 w-full overflow-hidden">
+                                <img 
+                                  src={destinationImage} 
+                                  alt={destination?.name || 'Destination'} 
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                                <div className="absolute top-2 right-2">
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="p-2 rounded-full bg-black/40 hover:bg-black/60 cursor-grab active:cursor-grabbing"
+                                    title="Drag to reorder"
+                                  >
+                                    <GripVertical size={18} className="text-white" />
+                                  </div>
                                 </div>
-                                
-                                <div className="flex-1">
+                                <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-sm text-muted-foreground font-medium">Day {index + 1}</span>
+                                    <span className="text-xs font-medium opacity-90">Day {index + 1}</span>
                                     {isPastDay && (
-                                      <span className="inline-block bg-destructive/20 text-destructive px-2 py-0.5 rounded text-xs font-medium">
+                                      <span className="inline-block bg-red-500/90 text-white px-2 py-0.5 rounded text-xs font-medium">
                                         PAST
                                       </span>
                                     )}
@@ -1429,42 +1593,104 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                         TODAY
                                       </span>
                                     )}
+                                    {isTransfer && (
+                                      <span className="inline-block bg-yellow-500 text-yellow-900 px-2 py-0.5 rounded text-xs font-bold">
+                                        Transfer
+                                      </span>
+                                    )}
                                   </div>
-                                  {isTransfer && (
-                                    <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
-                                      Transfer
-                                    </span>
-                                  )}
-                                  <h4 className={cn(
-                                    'text-2xl font-bold',
-                                    isPastDay ? 'text-destructive' : 'text-primary'
-                                  )}>
+                                  <h4 className="text-xl font-bold">
                                     {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
                                   </h4>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    <Calendar size={14} className="inline mr-1" />
-                                    {formattedDate}
-                                  </p>
-                                  {isTransfer && distance && travelTime && (
-                                    <div className="mt-2 flex gap-4 text-sm">
-                                      <span className="text-primary font-medium">
-                                        📏 {formatDistance(distance)}
-                                      </span>
-                                      <span className="text-primary font-medium">
-                                        🕐 {travelTime}
-                                      </span>
-                                    </div>
-                                  )}
                                 </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteMutation.mutate(item.id)}
-                              >
-                                <Trash2 size={18} />
-                              </Button>
-                            </div>
+                            )}
+
+                            <div className="p-5">
+                            {/* Fallback header when no image */}
+                            {!destinationImage && (
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex items-start gap-3 flex-1">
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="mt-1 p-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing"
+                                    title="Drag to reorder"
+                                  >
+                                    <GripVertical size={20} className="text-muted-foreground" />
+                                  </div>
+                                  
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-sm text-muted-foreground font-medium">Day {index + 1}</span>
+                                      {isPastDay && (
+                                        <span className="inline-block bg-destructive/20 text-destructive px-2 py-0.5 rounded text-xs font-medium">
+                                          PAST
+                                        </span>
+                                      )}
+                                      {isTodayDay && (
+                                        <span className="inline-block bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs font-medium animate-pulse">
+                                          TODAY
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isTransfer && (
+                                      <span className="inline-block bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded text-xs font-medium mb-1">
+                                        Transfer
+                                      </span>
+                                    )}
+                                    <h4 className={cn(
+                                      'text-2xl font-bold',
+                                      isPastDay ? 'text-destructive' : 'text-primary'
+                                    )}>
+                                      {isTransfer ? `${origin?.name || 'Origin'} → ${destination?.name || 'Destination'}` : destination?.name}
+                                    </h4>
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteMutation.mutate(item.id)}
+                                >
+                                  <Trash2 size={18} />
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {/* Date and delete button row when image exists */}
+                            {destinationImage && (
+                              <div className="flex justify-between items-center mb-3">
+                                <p className="text-sm text-muted-foreground">
+                                  <Calendar size={14} className="inline mr-1" />
+                                  {formattedDate}
+                                </p>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteMutation.mutate(item.id)}
+                                >
+                                  <Trash2 size={18} />
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Date row when no image */}
+                            {!destinationImage && (
+                              <p className="text-sm text-muted-foreground mb-3">
+                                <Calendar size={14} className="inline mr-1" />
+                                {formattedDate}
+                              </p>
+                            )}
+
+                            {isTransfer && distance && travelTime && (
+                              <div className="mb-3 flex gap-4 text-sm">
+                                <span className="text-primary font-medium">
+                                  📏 {formatDistance(distance)}
+                                </span>
+                                <span className="text-primary font-medium">
+                                  🕐 {travelTime}
+                                </span>
+                              </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                               <div>
@@ -1769,6 +1995,7 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                 </div>
                               </div>
                             )}
+                            </div>{/* end of p-5 wrapper */}
                           </div>
                         )}
                       </Draggable>
