@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays, FileUp } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays, FileUp, Crown, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -22,6 +22,9 @@ import { ItineraryCalendarView } from '@/components/itinerary/ItineraryCalendarV
 import { DocumentUpload } from '@/components/itinerary/DocumentUpload';
 import { isPast, isToday } from 'date-fns';
 import { getDestinationImage } from '@/lib/destinationImages';
+import { useSubscription } from '@/hooks/useSubscription';
+import { PaywallModal } from '@/components/subscription/PaywallModal';
+import { SubscriptionStatus } from '@/components/subscription/SubscriptionStatus';
 
 // Hotel-specific booking URLs
 const HOTEL_BOOKING_URLS: Record<string, string> = {
@@ -88,6 +91,19 @@ const FreeIndependent = () => {
   const { user } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  
+  // Subscription hook for paywall
+  const { 
+    hasActiveSubscription, 
+    isAdmin, 
+    isLoading: subscriptionLoading, 
+    openPaymentPage, 
+    activateSubscription,
+    showPaywall,
+    setShowPaywall,
+    requireSubscription
+  } = useSubscription();
+  
   const [dayType, setDayType] = useState<'regular' | 'transfer'>('regular');
   const [selectedOrigin, setSelectedOrigin] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
@@ -1112,6 +1128,41 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
 
   return (
     <div className="max-w-7xl mx-auto p-8 pt-20">
+      {/* Paywall Modal */}
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onPayment={openPaymentPage}
+        onActivate={activateSubscription}
+      />
+      
+      {/* Subscription Status Banner */}
+      {!subscriptionLoading && !hasActiveSubscription && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <Crown className="h-6 w-6 text-amber-500" />
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">Planning is free! Subscribe to book.</p>
+              <p className="text-sm text-amber-600 dark:text-amber-400">One-time $50 payment for lifetime booking access.</p>
+            </div>
+          </div>
+          <Button 
+            onClick={() => setShowPaywall(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-white"
+          >
+            <Crown className="mr-2 h-4 w-4" />
+            Subscribe Now
+          </Button>
+        </div>
+      )}
+      
+      {hasActiveSubscription && !isAdmin && (
+        <div className="mb-6 p-3 bg-primary/10 rounded-lg border border-primary/30 flex items-center gap-3">
+          <Check className="h-5 w-5 text-primary" />
+          <span className="text-sm text-primary font-medium">Premium Member - Full booking access enabled</span>
+        </div>
+      )}
+      
       <h2 className="text-4xl font-bold text-center text-primary mb-4">
         Plan Your Free Independent Trip
       </h2>
@@ -1844,9 +1895,10 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank')}
+                                    onClick={() => requireSubscription(() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank'))}
                                     className="ml-2"
                                   >
+                                    {!hasActiveSubscription && <Lock size={12} className="mr-1" />}
                                     <ExternalLink size={14} className="mr-1" />
                                     Book Hotel
                                   </Button>
@@ -1895,9 +1947,10 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank')}
+                                    onClick={() => requireSubscription(() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank'))}
                                     className="ml-2"
                                   >
+                                    {!hasActiveSubscription && <Lock size={12} className="mr-1" />}
                                     <ExternalLink size={14} className="mr-1" />
                                     Book Activity
                                   </Button>
@@ -2053,6 +2106,11 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
               <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
                 <h4 className="font-semibold mb-3 flex items-center">
                   <Car size={20} className="mr-2" /> Car Rental (Book Once for Entire Trip)
+                  {!hasActiveSubscription && (
+                    <span className="ml-2 text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full flex items-center">
+                      <Lock className="w-3 h-3 mr-1" /> Premium
+                    </span>
+                  )}
                 </h4>
                 <p className="text-sm text-muted-foreground mb-3">
                   Your selected vehicle: <strong>{cars?.find(c => itinerary.some(i => i.car_id === c.id))?.name || 'Not selected'}</strong>
@@ -2063,8 +2121,9 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                       key={rental.name}
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(rental.url, '_blank')}
+                      onClick={() => requireSubscription(() => window.open(rental.url, '_blank'))}
                     >
+                      {!hasActiveSubscription && <Lock size={12} className="mr-1" />}
                       <ExternalLink size={14} className="mr-1" />
                       {rental.name}
                     </Button>

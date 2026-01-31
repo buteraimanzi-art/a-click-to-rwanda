@@ -1,16 +1,19 @@
 project_id = "nplhsonknhufztsbdyvh"
 
 [functions.ai-planner]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-package-email]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-sos-alert]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-daily-reminder]
-verify_jwt = true
+verify_jwt = false
 
 [functions.extract-itinerary]
-verify_jwt = true
+verify_jwt = false
+
+[functions.manage-subscription]
+verify_jwt = false
