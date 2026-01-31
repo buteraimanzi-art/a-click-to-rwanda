@@ -67,11 +67,18 @@ serve(async (req) => {
       });
     }
 
-    // Use the actual user email once domain is verified in Resend
-    // For production with verified domain, change from address to: noreply@yourdomain.com
+    // Admin email that always works (Resend account owner - works in testing mode)
+    const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+    
+    // Check if custom domain is configured via environment variable
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
-    const recipientEmail = email; // Send to actual user email
-    console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}`);
+    const hasVerifiedDomain = !FROM_EMAIL.includes("resend.dev");
+    
+    // In testing mode (no verified domain), only send to admin email
+    // With verified domain, send to actual user email
+    const recipientEmail = hasVerifiedDomain ? email : ADMIN_EMAIL;
+    
+    console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}${!hasVerifiedDomain ? ' (testing mode - admin only)' : ''}`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

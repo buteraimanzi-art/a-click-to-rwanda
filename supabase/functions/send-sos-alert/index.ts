@@ -10,8 +10,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Click to Rwanda emergency contact email - configurable via environment
-const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || "buteraimanzi@gmail.com";
+// Admin email - always works in testing mode (Resend account owner)
+const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+// Emergency contact - configurable, defaults to admin
+const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
 // From email - use verified domain in production
 const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 
