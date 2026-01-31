@@ -67,9 +67,11 @@ serve(async (req) => {
       });
     }
 
-    // Always send to the verified email address (Resend testing mode limitation)
-    const verifiedEmail = "buteraimanzi@gmail.com";
-    console.log(`Sending ${packageType} email to ${verifiedEmail} for user ${user.id} (requested: ${email})`);
+    // Use the actual user email once domain is verified in Resend
+    // For production with verified domain, change from address to: noreply@yourdomain.com
+    const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
+    const recipientEmail = email; // Send to actual user email
+    console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -78,8 +80,8 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "A Click to Rwanda <onboarding@resend.dev>",
-        to: [verifiedEmail],
+        from: FROM_EMAIL,
+        to: [recipientEmail],
         subject: `Your Rwanda ${packageType === 'ai-planner' ? 'Tour Package' : 'Itinerary'}: ${packageTitle}`,
         html: `
 <!DOCTYPE html>

@@ -10,9 +10,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Click to Rwanda emergency contact email
-// Note: Using Resend account owner's email for testing mode
-const EMERGENCY_EMAIL = "buteraimanzi@gmail.com";
+// Click to Rwanda emergency contact email - configurable via environment
+const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || "buteraimanzi@gmail.com";
+// From email - use verified domain in production
+const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 
 interface SOSAlertRequest {
   latitude: number | null;
@@ -162,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailPayload: any = {
-      from: "Click to Rwanda Emergency <onboarding@resend.dev>",
+      from: FROM_EMAIL,
       to: [EMERGENCY_EMAIL],
       subject: `🚨 EMERGENCY SOS ALERT - ${userName} - ${phoneNumber}`,
       html: emailHtml,
