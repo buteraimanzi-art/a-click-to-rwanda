@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Loader2, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileUp, Loader2, FileText, X, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,6 +22,35 @@ interface DocumentUploadProps {
   activities: Array<{ id: string; name: string; destination_id: string }>;
   onClose?: () => void;
 }
+
+// Booking URLs for destinations
+const getDestinationBookingUrl = (destinationName: string): string | null => {
+  const name = destinationName.toLowerCase();
+  
+  if (name.includes('volcanoes') || name.includes('gorilla')) {
+    return 'https://visitrwandabookings.rdb.rw/rdbportal/web/tourism/tourist-permit';
+  }
+  if (name.includes('akagera')) {
+    return 'https://visitakagera.org/book-now/';
+  }
+  if (name.includes('nyungwe')) {
+    return 'https://visitnyungwe.org/book-now/';
+  }
+  if (name.includes('kivu')) {
+    return 'https://www.booking.com/region/rw/lake-kivu.html';
+  }
+  if (name.includes('museum') || name.includes('palace') || name.includes('genocide')) {
+    return 'https://irembo.gov.rw/home/citizen/all_services';
+  }
+  if (name.includes('kigali')) {
+    return 'https://www.booking.com/city/rw/kigali.html';
+  }
+  if (name.includes('musanze')) {
+    return 'https://www.booking.com/city/rw/ruhengeri.html';
+  }
+  
+  return null;
+};
 
 export const DocumentUpload = ({ 
   userId, 
@@ -342,24 +371,54 @@ export const DocumentUpload = ({
                 <span className="font-medium">Found {extractedItinerary.length} days</span>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2">
-                {extractedItinerary.map((day, index) => (
-                  <div 
-                    key={index}
-                    className="bg-muted/50 p-3 rounded-lg text-sm"
-                  >
-                    <div className="font-medium">Day {index + 1}: {day.destination}</div>
-                    {day.hotel && (
-                      <div className="text-muted-foreground">🏨 {day.hotel}</div>
-                    )}
-                    {day.activity && (
-                      <div className="text-muted-foreground">🎯 {day.activity}</div>
-                    )}
-                    {day.notes && (
-                      <div className="text-muted-foreground text-xs mt-1">{day.notes}</div>
-                    )}
-                  </div>
-                ))}
+              <div className="max-h-72 overflow-y-auto space-y-3">
+                {extractedItinerary.map((day, index) => {
+                  const bookingUrl = getDestinationBookingUrl(day.destination);
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className="bg-muted/50 p-4 rounded-lg text-sm border border-border/50"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="font-semibold text-foreground">Day {index + 1}: {day.destination}</div>
+                          {day.hotel && (
+                            <div className="text-muted-foreground flex items-center gap-1 mt-1">
+                              🏨 {day.hotel}
+                            </div>
+                          )}
+                          {day.activity && (
+                            <div className="text-muted-foreground flex items-center gap-1">
+                              🎯 {day.activity}
+                            </div>
+                          )}
+                          {day.notes && (
+                            <div className="text-muted-foreground text-xs mt-2 italic">{day.notes}</div>
+                          )}
+                        </div>
+                        {bookingUrl && (
+                          <a
+                            href={bookingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs gap-1 h-7"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Book
+                            </Button>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex gap-2">
