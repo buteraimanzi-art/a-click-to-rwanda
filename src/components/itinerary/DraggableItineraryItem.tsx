@@ -1,5 +1,5 @@
 import { Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, Calendar, Hotel, MapPin, Car, Check, ExternalLink, ImageIcon } from 'lucide-react';
+import { GripVertical, Trash2, Calendar, Hotel, MapPin, Car, Check, ExternalLink, ImageIcon, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calculateDistance, estimateTravelTime, formatDistance } from '@/lib/utils';
 import { getDestinationImage } from '@/lib/destinationImages';
@@ -36,6 +36,8 @@ interface DraggableItineraryItemProps {
   getBookingUrl: (destinationId: string, type: 'destination' | 'hotel', hotelId?: string | null) => string | null;
   hotelBookingUrls: Record<string, string>;
   showCostInputs: boolean;
+  hasActiveSubscription: boolean;
+  requireSubscription: (callback: () => void) => void;
 }
 
 export const DraggableItineraryItem = ({
@@ -51,6 +53,8 @@ export const DraggableItineraryItem = ({
   getBookingUrl,
   hotelBookingUrls,
   showCostInputs,
+  hasActiveSubscription,
+  requireSubscription,
 }: DraggableItineraryItemProps) => {
   const destination = destinations?.find((d) => d.id === item.destination_id);
   const origin = destinations?.find((d) => d.id === item.origin_id);
@@ -274,9 +278,10 @@ export const DraggableItineraryItem = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank')}
+                  onClick={() => requireSubscription(() => window.open(getBookingUrl(item.destination_id, 'hotel', item.hotel_id)!, '_blank'))}
                   className="ml-2"
                 >
+                  {!hasActiveSubscription && <Lock size={12} className="mr-1" />}
                   <ExternalLink size={14} className="mr-1" />
                   Book Hotel
                 </Button>
@@ -318,9 +323,10 @@ export const DraggableItineraryItem = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank')}
+                  onClick={() => requireSubscription(() => window.open(getBookingUrl(item.destination_id, 'destination')!, '_blank'))}
                   className="ml-2"
                 >
+                  {!hasActiveSubscription && <Lock size={12} className="mr-1" />}
                   <ExternalLink size={14} className="mr-1" />
                   Book Activity
                 </Button>
