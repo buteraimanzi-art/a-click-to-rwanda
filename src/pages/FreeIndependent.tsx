@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -19,6 +19,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { ItineraryProgress } from '@/components/itinerary/ItineraryProgress';
 import { SmartSuggestions } from '@/components/itinerary/SmartSuggestions';
 import { ItineraryCalendarView } from '@/components/itinerary/ItineraryCalendarView';
+import { DocumentUpload } from '@/components/itinerary/DocumentUpload';
 import { isPast, isToday } from 'date-fns';
 import { getDestinationImage } from '@/lib/destinationImages';
 
@@ -109,6 +110,7 @@ const FreeIndependent = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [showCalendarView, setShowCalendarView] = useState(false);
   const [sendingDailyReminder, setSendingDailyReminder] = useState(false);
+  const [showDocumentUpload, setShowDocumentUpload] = useState(false);
 
   // Start notification checker on mount
   useEffect(() => {
@@ -1124,10 +1126,33 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
         <RwandaMap selectedLocations={mapLocations} showRoutes={true} />
       </div>
 
+      {/* Document Upload Section */}
+      {showDocumentUpload && destinations && hotels && activities && (
+        <div className="mb-8">
+          <DocumentUpload
+            userId={user.id}
+            destinations={destinations}
+            hotels={hotels}
+            activities={activities}
+            onClose={() => setShowDocumentUpload(false)}
+          />
+        </div>
+      )}
+
       <div className="bg-card rounded-lg shadow-lg p-6 mb-8">
-        <h3 className="text-2xl font-bold mb-4 flex items-center">
-          <Plus size={24} className="mr-2" /> Add Day to Itinerary
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <h3 className="text-2xl font-bold flex items-center">
+            <Plus size={24} className="mr-2" /> Add Day to Itinerary
+          </h3>
+          <Button
+            variant="outline"
+            onClick={() => setShowDocumentUpload(!showDocumentUpload)}
+            className="flex items-center gap-2"
+          >
+            <FileUp className="w-4 h-4" />
+            {showDocumentUpload ? 'Hide Upload' : 'Import from Document'}
+          </Button>
+        </div>
 
         {/* Day Type Selector */}
         <div className="mb-6">
