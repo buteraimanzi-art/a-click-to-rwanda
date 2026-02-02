@@ -1,4 +1,5 @@
-import { MapPin, Phone, Mail } from 'lucide-react';
+import { MapPin, Phone, Mail, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Footer = () => (
   <footer className="bg-foreground text-background py-8 px-4 md:px-8 mt-12">
@@ -13,9 +14,9 @@ export const Footer = () => (
         <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
         <ul className="space-y-2 text-sm">
           <li>
-            <a href="#" className="hover:text-accent transition">
+            <Link to="/about" className="hover:text-accent transition">
               About Us
-            </a>
+            </Link>
           </li>
           <li>
             <a href="#" className="hover:text-accent transition">
@@ -65,6 +66,13 @@ export const Footer = () => (
     </div>
     <div className="mt-8 pt-8 border-t border-background/20 text-center text-sm opacity-90">
       <p>&copy; 2025 A CLICK TO RWANDA. All Rights Reserved.</p>
+      <Link 
+        to="/staff-login" 
+        className="inline-flex items-center gap-1 mt-2 text-xs opacity-60 hover:opacity-100 transition"
+      >
+        <Shield className="w-3 h-3" />
+        Staff Portal
+      </Link>
     </div>
   </footer>
 );
