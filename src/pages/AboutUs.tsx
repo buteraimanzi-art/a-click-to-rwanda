@@ -1,22 +1,19 @@
+import lilianeImage from '@/assets/team/liliane.jpeg';
+import eliseImage from '@/assets/team/elise.jpeg';
+
 const AboutUs = () => {
   const teamMembers = [
     {
       name: 'Liliane Tuyizere',
       title: 'Director Manager (CEO)',
       bio: 'Liliane ensures the seamless operation and quality of our services. Her dedication to client satisfaction is the driving force behind our mission.',
-      image: 'https://placehold.co/150x150/145833/ffffff?text=LT',
+      image: lilianeImage,
     },
     {
       name: 'Elise Imanzi Butera',
       title: 'Chief Operating Officer (COO)',
       bio: 'Elise is the visionary leader who spearheads our strategic initiatives, aiming to revolutionize Rwanda tourism sector and create unforgettable experiences.',
-      image: 'https://placehold.co/150x150/145833/ffffff?text=EIB',
-    },
-    {
-      name: 'Pacifique Ishimwe',
-      title: 'Software Developer',
-      bio: 'Pacifique is the brilliant mind behind our platform robust and user-friendly technology. He ensures the application is always running smoothly and securely.',
-      image: 'https://placehold.co/150x150/145833/ffffff?text=PI',
+      image: eliseImage,
     },
   ];
 

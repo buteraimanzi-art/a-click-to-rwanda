@@ -17,6 +17,8 @@ import Login from "./pages/Login";
 import InteractiveMap from "./pages/InteractiveMap";
 import AIPlanner from "./pages/AIPlanner";
 import Profile from "./pages/Profile";
+import StaffLogin from "./pages/StaffLogin";
+import StaffPortal from "./pages/StaffPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 <Route path="/map" element={<InteractiveMap />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/staff-login" element={<StaffLogin />} />
+                <Route path="/staff-portal" element={<StaffPortal />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
