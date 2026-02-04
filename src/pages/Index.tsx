@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import heroImage from '@/assets/hero-rwanda.jpg';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -30,8 +31,45 @@ const destinationImages: Record<string, string> = {
   'art-gallery': rwandaArtImg,
 };
 
+const heroSlides = [
+  {
+    title: "Welcome to the Heart of Africa",
+    subtitle: "Explore the land of a thousand hills with 'A CLICK TO RWANDA'"
+  },
+  {
+    title: "Plan Your Perfect Journey",
+    subtitle: "Create personalized itineraries with our AI-powered travel planner"
+  },
+  {
+    title: "Discover Hidden Gems",
+    subtitle: "From gorilla trekking to serene lakes, experience Rwanda's natural wonders"
+  },
+  {
+    title: "Book With Confidence",
+    subtitle: "Trusted local partners, verified accommodations, and 24/7 support"
+  },
+  {
+    title: "Your Adventure Awaits",
+    subtitle: "One platform for hotels, activities, transport, and exclusive tours"
+  }
+];
+
 const Index = () => {
   const navigate = useNavigate();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+        setIsAnimating(false);
+      }, 500);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: destinations } = useQuery({
     queryKey: ['destinations'],
@@ -63,12 +101,37 @@ const Index = () => {
         />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative z-10 px-4 max-w-4xl">
-          <h2 className="text-4xl md:text-6xl font-bold leading-tight mb-4">
-            Welcome to the Heart of Africa
-          </h2>
-          <p className="mt-4 text-xl md:text-2xl font-light">
-            Explore the land of a thousand hills with 'A CLICK TO RWANDA'
-          </p>
+          <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight mb-4 animate-fade-in">
+              {heroSlides[currentSlide].title}
+            </h2>
+            <p className="mt-4 text-xl md:text-2xl font-light">
+              {heroSlides[currentSlide].subtitle}
+            </p>
+          </div>
+          
+          {/* Slide indicators */}
+          <div className="flex justify-center gap-2 mt-6">
+            {heroSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  setIsAnimating(true);
+                  setTimeout(() => {
+                    setCurrentSlide(index);
+                    setIsAnimating(false);
+                  }, 300);
+                }}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  index === currentSlide 
+                    ? 'bg-white w-8' 
+                    : 'bg-white/50 hover:bg-white/75'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+          
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
             <Button
               onClick={() => navigate('/free-independent')}
