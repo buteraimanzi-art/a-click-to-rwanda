@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,11 +7,162 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { 
   User, Package, Calendar, Star, Trash2, ExternalLink, 
-  MapPin, Hotel, Activity, Clock, Loader2
+  MapPin, Hotel, Activity, Clock, Loader2, CalendarDays
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { format, isSameDay, isPast, isToday } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+interface TravelCalendarProps {
+  itineraries: any[];
+  destinations: any[] | undefined;
+  hotels: any[] | undefined;
+  activities: any[] | undefined;
+  getDestinationName: (id: string) => string;
+  getHotelName: (id: string | null) => string | null;
+  getActivityName: (id: string | null) => string | null;
+}
+
+const TravelCalendar = ({ itineraries, getDestinationName, getHotelName, getActivityName }: TravelCalendarProps) => {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  const itineraryDates = useMemo(() => itineraries.map(i => new Date(i.date)), [itineraries]);
+  const bookedDates = useMemo(() => itineraries.filter(i => i.is_booked || i.all_confirmed).map(i => new Date(i.date)), [itineraries]);
+  const unbookedDates = useMemo(() => itineraries.filter(i => !i.is_booked && !i.all_confirmed).map(i => new Date(i.date)), [itineraries]);
+
+  const selectedDayInfo = useMemo(() => {
+    if (!selectedDate) return null;
+    return itineraries.find(i => isSameDay(new Date(i.date), selectedDate));
+  }, [selectedDate, itineraries]);
+
+  const modifiers = useMemo(() => ({
+    booked: bookedDates,
+    unbooked: unbookedDates,
+  }), [bookedDates, unbookedDates]);
+
+  const modifiersClassNames = {
+    booked: 'bg-green-500 text-white hover:bg-green-600 font-bold',
+    unbooked: 'bg-red-500 text-white hover:bg-red-600 font-bold',
+  };
+
+  const dateRange = useMemo(() => {
+    if (itineraries.length === 0) return new Date();
+    return new Date(Math.min(...itineraryDates.map(d => d.getTime())));
+  }, [itineraries, itineraryDates]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          My Travel Calendar
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-4 mb-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-green-500" />
+            <span>Booked / Confirmed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-red-500" />
+            <span>Not Booked</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex-shrink-0">
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              defaultMonth={dateRange}
+              numberOfMonths={2}
+              modifiers={modifiers}
+              modifiersClassNames={modifiersClassNames}
+              className="rounded-md border pointer-events-auto"
+            />
+          </div>
+
+          <div className="flex-1">
+            {selectedDayInfo ? (
+              <Card className={cn(
+                'border-2',
+                (selectedDayInfo.is_booked || selectedDayInfo.all_confirmed) ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+              )}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">
+                      {format(new Date(selectedDayInfo.date), 'EEEE, MMMM d, yyyy')}
+                    </CardTitle>
+                    <Badge className={cn(
+                      (selectedDayInfo.is_booked || selectedDayInfo.all_confirmed) 
+                        ? 'bg-green-500 hover:bg-green-600' 
+                        : 'bg-red-500 hover:bg-red-600'
+                    )}>
+                      {(selectedDayInfo.is_booked || selectedDayInfo.all_confirmed) ? '✅ Booked' : '❌ Not Booked'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <span className="font-medium">{getDestinationName(selectedDayInfo.destination_id)}</span>
+                  </div>
+                  <Badge variant="outline">{selectedDayInfo.day_type === 'transfer' ? 'Transfer Day' : 'Regular Day'}</Badge>
+                  {selectedDayInfo.hotel_id && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Hotel className="w-4 h-4 text-muted-foreground" />
+                      <span>{getHotelName(selectedDayInfo.hotel_id)}</span>
+                      {selectedDayInfo.hotel_booked ? (
+                        <Badge className="bg-green-500 text-xs">Booked</Badge>
+                      ) : (
+                        <Badge className="bg-red-500 text-xs">Not Booked</Badge>
+                      )}
+                    </div>
+                  )}
+                  {selectedDayInfo.activity_id && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Activity className="w-4 h-4 text-muted-foreground" />
+                      <span>{getActivityName(selectedDayInfo.activity_id)}</span>
+                      {selectedDayInfo.activity_booked ? (
+                        <Badge className="bg-green-500 text-xs">Booked</Badge>
+                      ) : (
+                        <Badge className="bg-red-500 text-xs">Not Booked</Badge>
+                      )}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground mt-2">
+                    {selectedDayInfo.wake_time && <p>⏰ Wake: {selectedDayInfo.wake_time}</p>}
+                    {selectedDayInfo.breakfast_time && <p>🍳 Breakfast: {selectedDayInfo.breakfast_time}</p>}
+                    {selectedDayInfo.lunch_time && <p>🍽️ Lunch: {selectedDayInfo.lunch_time}</p>}
+                    {selectedDayInfo.dinner_time && <p>🍷 Dinner: {selectedDayInfo.dinner_time}</p>}
+                  </div>
+                  {selectedDayInfo.notes && (
+                    <p className="text-sm bg-muted/50 p-2 rounded">{selectedDayInfo.notes}</p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : itineraries.length > 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+                <CalendarDays className="w-12 h-12 mb-3 opacity-50" />
+                <p>Click a highlighted date to see details</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+                <CalendarDays className="w-12 h-12 mb-3 opacity-50" />
+                <p>No travel days planned yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 const Profile = () => {
   const { user, isAuthReady } = useApp();
@@ -223,10 +375,14 @@ const Profile = () => {
 
         {/* Tabs Content */}
         <Tabs defaultValue="packages" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 bg-card">
+          <TabsList className="grid w-full grid-cols-4 bg-card">
             <TabsTrigger value="packages" className="gap-2">
               <Package className="w-4 h-4" />
               <span className="hidden sm:inline">Packages</span>
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="gap-2">
+              <CalendarDays className="w-4 h-4" />
+              <span className="hidden sm:inline">My Travel Calendar</span>
             </TabsTrigger>
             <TabsTrigger value="itineraries" className="gap-2">
               <Calendar className="w-4 h-4" />
@@ -293,6 +449,19 @@ const Profile = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Travel Calendar Tab */}
+          <TabsContent value="calendar" className="mt-4">
+            <TravelCalendar
+              itineraries={itineraries || []}
+              destinations={destinations}
+              hotels={hotels}
+              activities={activities}
+              getDestinationName={getDestinationName}
+              getHotelName={getHotelName}
+              getActivityName={getActivityName}
+            />
           </TabsContent>
 
           {/* Itineraries Tab */}
