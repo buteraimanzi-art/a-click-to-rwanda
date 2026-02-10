@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   User, Package, Calendar, Star, Trash2, ExternalLink, 
-  MapPin, Hotel, Activity, Clock, Loader2, CalendarDays
+  MapPin, Hotel, Activity, Clock, Loader2, CalendarDays, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isSameDay, isPast, isToday } from 'date-fns';
@@ -168,6 +169,52 @@ const Profile = () => {
   const { user, isAuthReady } = useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  // Fetch user profile (avatar)
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const uploadAvatar = async (file: File) => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/avatar.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({ user_id: user.id, avatar_url: avatarUrl }, { onConflict: 'user_id' });
+      if (upsertError) throw upsertError;
+
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Profile picture updated!');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to upload');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Fetch saved packages
   const { data: savedPackages, isLoading: packagesLoading } = useQuery({
@@ -343,8 +390,28 @@ const Profile = () => {
         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-8 h-8 text-primary" />
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <Avatar className="w-16 h-16">
+                  {profile?.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt="Profile" />
+                  ) : null}
+                  <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                    {getUserDisplayName().charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAvatar(file);
+                  }}
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{getUserDisplayName()}</h1>
