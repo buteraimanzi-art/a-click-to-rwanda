@@ -4,12 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, DollarSign, Star, Calendar, Shield } from 'lucide-react';
+import { LogOut, DollarSign, Star, Calendar, Shield, Building2 } from 'lucide-react';
 import logoImage from '@/assets/logo-click-to-rwanda.png';
 import StatsGrid from '@/components/staff/StatsGrid';
 import SubscriptionsTab from '@/components/staff/SubscriptionsTab';
 import ReviewsTab from '@/components/staff/ReviewsTab';
 import ItinerariesTab from '@/components/staff/ItinerariesTab';
+import TourCompaniesTab from '@/components/staff/TourCompaniesTab';
 
 interface DashboardStats {
   totalUsers: number;
@@ -157,6 +158,10 @@ const StaffPortal = () => {
               <Calendar className="w-4 h-4 mr-2" />
               Itineraries
             </TabsTrigger>
+            <TabsTrigger value="tour-companies">
+              <Building2 className="w-4 h-4 mr-2" />
+              Tour Companies
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="subscriptions">
@@ -178,6 +183,10 @@ const StaffPortal = () => {
               itineraries={itineraries} 
               onRefresh={fetchDashboardData} 
             />
+          </TabsContent>
+
+          <TabsContent value="tour-companies">
+            <TourCompaniesTab />
           </TabsContent>
         </Tabs>
       </main>
