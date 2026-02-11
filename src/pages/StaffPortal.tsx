@@ -4,13 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, DollarSign, Star, Calendar, Shield, Building2 } from 'lucide-react';
+import { LogOut, DollarSign, Star, Calendar, Shield, Building2, MapPin, AlertCircle, MessageSquare } from 'lucide-react';
 import logoImage from '@/assets/logo-click-to-rwanda.png';
 import StatsGrid from '@/components/staff/StatsGrid';
 import SubscriptionsTab from '@/components/staff/SubscriptionsTab';
 import ReviewsTab from '@/components/staff/ReviewsTab';
 import ItinerariesTab from '@/components/staff/ItinerariesTab';
 import TourCompaniesTab from '@/components/staff/TourCompaniesTab';
+import DestinationsHotelsTab from '@/components/staff/DestinationsHotelsTab';
+import SOSAlertsTab from '@/components/staff/SOSAlertsTab';
+import MessagingTab from '@/components/staff/MessagingTab';
 
 interface DashboardStats {
   totalUsers: number;
@@ -36,21 +39,18 @@ const StaffPortal = () => {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      // Fetch subscriptions
       const { data: subsData, count: subsCount } = await supabase
         .from('subscriptions')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // Fetch reviews
       const { data: reviewsData, count: reviewsCount } = await supabase
         .from('reviews')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // Fetch itineraries
       const { data: itinData, count: itinCount } = await supabase
         .from('itineraries')
         .select('*', { count: 'exact' })
@@ -114,7 +114,6 @@ const StaffPortal = () => {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -135,7 +134,6 @@ const StaffPortal = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Stats Grid */}
         <StatsGrid 
           totalUsers={stats.totalUsers}
           activeSubscriptions={stats.activeSubscriptions}
@@ -143,50 +141,58 @@ const StaffPortal = () => {
           totalItineraries={stats.totalItineraries}
         />
 
-        {/* Data Tabs */}
         <Tabs defaultValue="subscriptions" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="subscriptions">
-              <DollarSign className="w-4 h-4 mr-2" />
+              <DollarSign className="w-4 h-4 mr-1" />
               Subscriptions
             </TabsTrigger>
             <TabsTrigger value="reviews">
-              <Star className="w-4 h-4 mr-2" />
+              <Star className="w-4 h-4 mr-1" />
               Reviews
             </TabsTrigger>
             <TabsTrigger value="itineraries">
-              <Calendar className="w-4 h-4 mr-2" />
+              <Calendar className="w-4 h-4 mr-1" />
               Itineraries
             </TabsTrigger>
             <TabsTrigger value="tour-companies">
-              <Building2 className="w-4 h-4 mr-2" />
+              <Building2 className="w-4 h-4 mr-1" />
               Tour Companies
+            </TabsTrigger>
+            <TabsTrigger value="destinations-hotels">
+              <MapPin className="w-4 h-4 mr-1" />
+              Destinations & Hotels
+            </TabsTrigger>
+            <TabsTrigger value="sos-alerts">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              SOS Alerts
+            </TabsTrigger>
+            <TabsTrigger value="messaging">
+              <MessageSquare className="w-4 h-4 mr-1" />
+              Messages
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="subscriptions">
-            <SubscriptionsTab 
-              subscriptions={subscriptions} 
-              onRefresh={fetchDashboardData} 
-            />
+            <SubscriptionsTab subscriptions={subscriptions} onRefresh={fetchDashboardData} />
           </TabsContent>
-
           <TabsContent value="reviews">
-            <ReviewsTab 
-              reviews={reviews} 
-              onRefresh={fetchDashboardData} 
-            />
+            <ReviewsTab reviews={reviews} onRefresh={fetchDashboardData} />
           </TabsContent>
-
           <TabsContent value="itineraries">
-            <ItinerariesTab 
-              itineraries={itineraries} 
-              onRefresh={fetchDashboardData} 
-            />
+            <ItinerariesTab itineraries={itineraries} onRefresh={fetchDashboardData} />
           </TabsContent>
-
           <TabsContent value="tour-companies">
             <TourCompaniesTab />
+          </TabsContent>
+          <TabsContent value="destinations-hotels">
+            <DestinationsHotelsTab />
+          </TabsContent>
+          <TabsContent value="sos-alerts">
+            <SOSAlertsTab />
+          </TabsContent>
+          <TabsContent value="messaging">
+            <MessagingTab />
           </TabsContent>
         </Tabs>
       </main>

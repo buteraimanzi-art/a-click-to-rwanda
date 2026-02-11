@@ -1,6 +1,49 @@
-import { Compass, Phone, Mail, Globe } from 'lucide-react';
+import { useState } from 'react';
+import { Compass, Phone, Mail, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+
+const ImageCarousel = ({ images, fallbackUrl, name }: { images: any[]; fallbackUrl: string; name: string }) => {
+  const [current, setCurrent] = useState(0);
+  const allImages = images.length > 0
+    ? images.sort((a: any, b: any) => a.sort_order - b.sort_order).map((i: any) => i.image_url)
+    : [fallbackUrl];
+
+  return (
+    <div className="relative h-48 overflow-hidden">
+      <img
+        src={allImages[current]}
+        alt={`${name} - ${current + 1}`}
+        className="w-full h-full object-cover transition-all duration-300"
+      />
+      {allImages.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrent(p => (p - 1 + allImages.length) % allImages.length); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrent(p => (p + 1) % allImages.length); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {allImages.map((_, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i); }}
+                className={`w-2 h-2 rounded-full transition-colors ${i === current ? 'bg-white' : 'bg-white/50'}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const TourOperators = () => {
   const { data: companies = [], isLoading } = useQuery({
@@ -14,6 +57,20 @@ const TourOperators = () => {
       return data;
     },
   });
+
+  const { data: companyImages = [] } = useQuery({
+    queryKey: ['tour-company-images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tour_company_images')
+        .select('*')
+        .order('sort_order');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const getImagesForCompany = (companyId: string) => companyImages.filter((i: any) => i.company_id === companyId);
 
   return (
     <div className="max-w-7xl mx-auto p-8 pt-20">
@@ -40,13 +97,11 @@ const TourOperators = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {companies.map((operator: any) => (
             <div key={operator.id} className="bg-card rounded-lg shadow-lg overflow-hidden group">
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={operator.image_url || `https://placehold.co/400x300/145833/ffffff?text=${encodeURIComponent(operator.name)}`}
-                  alt={operator.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                />
-              </div>
+              <ImageCarousel
+                images={getImagesForCompany(operator.id)}
+                fallbackUrl={operator.image_url || `https://placehold.co/400x300/145833/ffffff?text=${encodeURIComponent(operator.name)}`}
+                name={operator.name}
+              />
               <div className="p-6">
                 <h3 className="text-xl font-bold text-card-foreground mb-2">{operator.name}</h3>
                 <p className="text-muted-foreground mb-4">{operator.description}</p>

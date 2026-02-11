@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.manage-subscription]
 verify_jwt = false
+
+[functions.staff-management]
+verify_jwt = false

@@ -56,6 +56,33 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_requests: {
         Row: {
           created_at: string | null
@@ -112,6 +139,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           name: string
+          website: string | null
         }
         Insert: {
           created_at?: string | null
@@ -120,6 +148,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name: string
+          website?: string | null
         }
         Update: {
           created_at?: string | null
@@ -128,6 +157,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           name?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -215,6 +245,44 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          read: boolean | null
+          sender_id: string
+          sender_type: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          read?: boolean | null
+          sender_id: string
+          sender_type?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          read?: boolean | null
+          sender_id?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -293,6 +361,48 @@ export type Database = {
         }
         Relationships: []
       }
+      sos_alerts: {
+        Row: {
+          created_at: string
+          description: string | null
+          has_voice_recording: boolean | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          phone_number: string | null
+          resolved_at: string | null
+          status: string
+          user_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          has_voice_recording?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          phone_number?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          has_voice_recording?: boolean | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          phone_number?: string | null
+          resolved_at?: string | null
+          status?: string
+          user_email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount: number
@@ -361,6 +471,41 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      tour_company_images: {
+        Row: {
+          caption: string | null
+          company_id: string
+          created_at: string
+          id: string
+          image_url: string
+          sort_order: number | null
+        }
+        Insert: {
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          sort_order?: number | null
+        }
+        Update: {
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tour_company_images_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "tour_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -253,6 +253,75 @@ const FreeIndependent = () => {
         throw new Error('Regular day requires destination');
       }
 
+      // ======= ITINERARY FEASIBILITY RULES =======
+      const newDate = new Date(selectedDate);
+
+      // Rule 1: No past dates
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (newDate < today) {
+        throw new Error('Cannot add itinerary days in the past');
+      }
+
+      // Rule 2: No duplicate dates
+      if (itinerary.some(item => item.date === selectedDate)) {
+        throw new Error('You already have an itinerary entry for this date. Choose a different date.');
+      }
+
+      // Rule 3: Transfer day logic - if previous day was in a different destination, today should be transfer
+      if (itinerary.length > 0 && dayType === 'regular') {
+        const sortedItinerary = [...itinerary].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const prevDay = sortedItinerary.find(item => new Date(item.date) < newDate);
+        if (prevDay) {
+          // Find the closest previous day
+          const closestPrev = sortedItinerary.filter(item => new Date(item.date) < newDate).pop();
+          if (closestPrev && closestPrev.destination_id !== selectedDestination) {
+            // Check if destinations are far apart using known coordinates
+            const prevDest = destinations?.find(d => d.id === closestPrev.destination_id);
+            const newDest = destinations?.find(d => d.id === selectedDestination);
+            if (prevDest?.latitude && prevDest?.longitude && newDest?.latitude && newDest?.longitude) {
+              const dist = calculateDistance(prevDest.latitude, prevDest.longitude, newDest.latitude, newDest.longitude);
+              if (dist > 50) {
+                // More than 50km apart - suggest transfer day
+                const confirmTransfer = window.confirm(
+                  `Your previous day was in ${prevDest.name} (${Math.round(dist)}km away). ` +
+                  `Consider using a "Transfer Day" instead for a realistic schedule. Continue anyway?`
+                );
+                if (!confirmTransfer) throw new Error('Cancelled - consider adding a transfer day first');
+              }
+            }
+          }
+        }
+      }
+
+      // Rule 4: Ensure dates are chronologically reasonable (no gaps > 14 days)
+      if (itinerary.length > 0) {
+        const allDates = itinerary.map(i => new Date(i.date).getTime());
+        allDates.push(newDate.getTime());
+        allDates.sort((a, b) => a - b);
+        for (let i = 1; i < allDates.length; i++) {
+          const gapDays = (allDates[i] - allDates[i - 1]) / (1000 * 60 * 60 * 24);
+          if (gapDays > 14) {
+            const confirmGap = window.confirm(
+              `There's a ${Math.round(gapDays)}-day gap in your itinerary. This may make your trip plan incomplete. Continue anyway?`
+            );
+            if (!confirmGap) throw new Error('Cancelled - fill in the gap days first');
+            break;
+          }
+        }
+      }
+
+      // Rule 5: Meal time validation
+      const times = [wakeTime, breakfastTime, lunchTime, dinnerTime].map(t => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      });
+      if (times[0] > times[1]) throw new Error('Wake time must be before breakfast');
+      if (times[1] > times[2]) throw new Error('Breakfast must be before lunch');
+      if (times[2] > times[3]) throw new Error('Lunch must be before dinner');
+
+      // ======= END FEASIBILITY RULES =======
+
       // Determine hotel and car IDs based on "same as previous" options
       let hotelId = selectedHotel || null;
       let carId = selectedCar || null;

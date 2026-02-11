@@ -7,6 +7,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SOSButton } from "@/components/SOSButton";
+import UserMessaging from "@/components/messaging/UserMessaging";
 import Index from "./pages/Index";
 import AboutUs from "./pages/AboutUs";
 import FreeIndependent from "./pages/FreeIndependent";
@@ -51,6 +52,7 @@ const App = () => (
             </main>
             <Footer />
             <SOSButton />
+            <UserMessaging />
           </div>
         </BrowserRouter>
       </AppProvider>
