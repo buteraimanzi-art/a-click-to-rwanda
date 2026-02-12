@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.staff-management]
 verify_jwt = false
+
+[functions.manage-tour-companies]
+verify_jwt = false
