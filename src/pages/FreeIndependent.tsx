@@ -3,7 +3,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays, FileUp, Crown, Lock } from 'lucide-react';
+import { Plus, Trash2, Download, BookOpen, Calendar, Bell, ExternalLink, Mail, Loader2, Check, Car, Hotel, MapPin, CheckCircle2, DollarSign, Package, Save, GripVertical, CalendarDays, FileUp, Crown, Lock, Navigation } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import RwandaMap from '@/components/RwandaMap';
@@ -86,6 +86,13 @@ const CAR_BOOKING_URLS = [
   { name: 'Kigali Car Rental', url: 'https://kigalicarrental.rw/' },
   { name: 'Rwanda Car Hire', url: 'https://rwandacarhire.com/' },
 ];
+
+// Open Google Maps directions from user's current location to a destination
+const openGoogleMapsDirections = (latitude: number, longitude: number, name: string) => {
+  // Uses current location as origin by leaving it blank in the URL
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&destination_place_id=&travelmode=driving`;
+  window.open(url, '_blank');
+};
 
 const FreeIndependent = () => {
   const { user } = useApp();
@@ -1972,6 +1979,17 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                                     Book Hotel
                                   </Button>
                                 )}
+                                {(isTodayDay || isPastDay) && hotel?.latitude && hotel?.longitude && (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => openGoogleMapsDirections(hotel.latitude!, hotel.longitude!, hotel.name)}
+                                    className="ml-2"
+                                  >
+                                    <Navigation size={14} className="mr-1" />
+                                    Go To
+                                  </Button>
+                                )}
                               </div>
                             )}
 
@@ -1979,6 +1997,24 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
                               <div className="flex items-center gap-2 text-sm mb-2 p-2 rounded-md bg-muted/30">
                                 <Car size={16} className="text-muted-foreground" />
                                 <span>{car.name}</span>
+                              </div>
+                            )}
+
+                            {/* Destination "Go To" button - shown when booked day has arrived */}
+                            {(isTodayDay || isPastDay) && destination?.latitude && destination?.longitude && (
+                              <div className="flex items-center justify-between text-sm mb-2 p-2 rounded-md bg-primary/10 border border-primary/30">
+                                <div className="flex items-center gap-2">
+                                  <MapPin size={16} className="text-primary" />
+                                  <span className="font-medium">{destination.name}</span>
+                                </div>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => openGoogleMapsDirections(destination.latitude!, destination.longitude!, destination.name)}
+                                >
+                                  <Navigation size={14} className="mr-1" />
+                                  Go To
+                                </Button>
                               </div>
                             )}
 
