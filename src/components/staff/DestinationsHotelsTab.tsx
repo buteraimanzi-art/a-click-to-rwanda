@@ -15,21 +15,24 @@ import { toast } from 'sonner';
 
 const callStaffApi = async (body: any) => {
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Not authenticated. Please log in again.');
+  }
   const res = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/staff-management`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
+        Authorization: `Bearer ${session.access_token}`,
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       },
       body: JSON.stringify(body),
     }
   );
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed');
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `Request failed (${res.status})`);
   }
   return res.json();
 };
