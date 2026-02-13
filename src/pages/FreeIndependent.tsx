@@ -1184,10 +1184,20 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
     }
   };
 
+  // Check if a date string (YYYY-MM-DD) is today in local timezone
+  const isDateToday = (dateStr: string) => {
+    const today = new Date();
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return year === today.getFullYear() && month === (today.getMonth() + 1) && day === today.getDate();
+  };
+
   // Check if a date is in the past (not today)
   const isDatePast = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return isPast(date) && !isToday(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date < today;
   };
 
   if (!user) {
@@ -1682,7 +1692,7 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
 
                     const isTransfer = item.day_type === 'transfer';
                     const isPastDay = isDatePast(item.date);
-                    const isTodayDay = isToday(new Date(item.date));
+                    const isTodayDay = isDateToday(item.date);
 
                     // Calculate distance and travel time for transfer days
                     let distance: number | null = null;
