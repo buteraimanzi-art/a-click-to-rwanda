@@ -8,6 +8,12 @@ const corsHeaders = {
 
 const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
 
+const isStaffUser = (email: string | undefined): boolean => {
+  if (!email) return false;
+  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || 
+         email.toLowerCase().endsWith("@aclicktorwanda.com");
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -30,25 +36,47 @@ serve(async (req) => {
       });
     }
 
-    if (!isStaff) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const { entity, action, ...payload } = await req.json();
 
-    // AUTH CHECK - verify if current user is staff
+    // AUTH CHECK - verify if current user is staff (no staff guard needed for this action)
     if (entity === "auth" && action === "check_staff") {
-      const email = user.email?.toLowerCase() || "";
-      const isStaff = email === ADMIN_EMAIL.toLowerCase() || email.endsWith("@aclicktorwanda.com");
-      return new Response(JSON.stringify({ isStaff }), {
+      return new Response(JSON.stringify({ isStaff: isStaffUser(user.email) }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const email = user.email?.toLowerCase() || "";
-    const isStaff = email === ADMIN_EMAIL.toLowerCase() || email.endsWith("@aclicktorwanda.com");
+    // DASHBOARD STATS - staff only
+    if (entity === "dashboard" && action === "stats") {
+      if (!isStaffUser(user.email)) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const [subsResult, reviewsResult, itinResult] = await Promise.all([
+        supabaseClient.from("subscriptions").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(50),
+        supabaseClient.from("reviews").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(50),
+        supabaseClient.from("itineraries").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(50),
+      ]);
+
+      return new Response(JSON.stringify({
+        subscriptions: subsResult.data || [],
+        subscriptionsCount: subsResult.count || 0,
+        reviews: reviewsResult.data || [],
+        reviewsCount: reviewsResult.count || 0,
+        itineraries: itinResult.data || [],
+        itinerariesCount: itinResult.count || 0,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // All remaining actions require staff access
+    if (!isStaffUser(user.email)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // DESTINATIONS
     if (entity === "destination") {

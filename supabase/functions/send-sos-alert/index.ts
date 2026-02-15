@@ -51,10 +51,46 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { 
-      latitude, longitude, locationAvailable,
-      phoneNumber, description, voiceRecording
-    }: SOSAlertRequest = await req.json();
+    const rawBody = await req.json();
+
+    // Validate inputs
+    const phoneNumber = String(rawBody.phoneNumber || "").trim();
+    const description = String(rawBody.description || "").trim();
+    const latitude = rawBody.latitude != null ? Number(rawBody.latitude) : null;
+    const longitude = rawBody.longitude != null ? Number(rawBody.longitude) : null;
+    const locationAvailable = !!rawBody.locationAvailable;
+    const voiceRecording = rawBody.voiceRecording ? String(rawBody.voiceRecording) : null;
+
+    // Phone number validation
+    const phoneRegex = /^\+?[0-9\s\-()]{7,20}$/;
+    if (!phoneNumber || !phoneRegex.test(phoneNumber)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid phone number format" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Description length limit
+    if (description.length > 2000) {
+      return new Response(
+        JSON.stringify({ error: "Description must be under 2000 characters" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Latitude/longitude validation
+    if (latitude !== null && (isNaN(latitude) || latitude < -90 || latitude > 90)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid latitude" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    if (longitude !== null && (isNaN(longitude) || longitude < -180 || longitude > 180)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid longitude" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     const userName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || 'Unknown User';
     const userEmail = user.email || 'No email provided';
