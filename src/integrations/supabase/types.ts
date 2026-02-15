@@ -403,6 +403,38 @@ export type Database = {
         }
         Relationships: []
       }
+      sos_audit_log: {
+        Row: {
+          action: string
+          alert_id: string | null
+          created_at: string
+          id: string
+          staff_user_id: string
+        }
+        Insert: {
+          action: string
+          alert_id?: string | null
+          created_at?: string
+          id?: string
+          staff_user_id: string
+        }
+        Update: {
+          action?: string
+          alert_id?: string | null
+          created_at?: string
+          id?: string
+          staff_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sos_audit_log_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "sos_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           amount: number

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/contexts/AppContext';
 
-const ADMIN_EMAIL = "buteraimanzi@gmail.com";
 const PAYPAL_PAYMENT_URL = "https://www.paypal.com/ncp/payment/YD6M888AMR5XW";
 
 interface Subscription {
@@ -27,12 +26,7 @@ export const useSubscription = () => {
       return;
     }
 
-    // Check if admin account (always has access)
-    if (user.email === ADMIN_EMAIL) {
-      setIsAdmin(true);
-      setIsLoading(false);
-      return;
-    }
+    // Admin check is now handled server-side by manage-subscription edge function
 
     try {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {

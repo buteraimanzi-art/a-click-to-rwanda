@@ -10,7 +10,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
 const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
 const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 

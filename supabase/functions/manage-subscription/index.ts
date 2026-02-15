@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Admin email - always has free access
-const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
 const STAFF_DOMAIN = "@aclicktorwanda.com";
 
 // Check if user is staff
