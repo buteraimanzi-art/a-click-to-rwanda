@@ -307,6 +307,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          key: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          key: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          key?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string
@@ -435,6 +456,36 @@ export type Database = {
           },
         ]
       }
+      staff_audit_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          staff_user_id: string
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          staff_user_id: string
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          staff_user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount: number
@@ -544,7 +595,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_rate_limits: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

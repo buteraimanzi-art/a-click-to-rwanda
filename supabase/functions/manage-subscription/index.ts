@@ -56,6 +56,17 @@ serve(async (req) => {
     // Use service role for database operations
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Audit logger helper
+    const logAudit = async (action: string, entityId?: string, changes?: any) => {
+      await supabaseAdmin.from("staff_audit_log").insert({
+        staff_user_id: user.id,
+        action,
+        entity_type: "subscription",
+        entity_id: entityId || null,
+        changes: changes || null,
+      });
+    };
+
     // ========== STAFF ACTIONS ==========
     if (action === "staff_update") {
       // Staff can update any subscription status
@@ -88,6 +99,7 @@ serve(async (req) => {
         );
       }
 
+      await logAudit("staff_update", subscription_id, { new_status });
       console.log(`Staff ${user.email} updated subscription ${subscription_id} to ${new_status}`);
 
       return new Response(
@@ -127,6 +139,7 @@ serve(async (req) => {
         );
       }
 
+      await logAudit("staff_delete", subscription_id);
       console.log(`Staff ${user.email} deleted subscription ${subscription_id}`);
 
       return new Response(
@@ -199,6 +212,7 @@ serve(async (req) => {
         }
       }
 
+      await logAudit("staff_create", target_user_id, { payment_reference: payment_reference || "STAFF_CREATED" });
       console.log(`Staff ${user.email} created subscription for user ${target_user_id}`);
 
       return new Response(

@@ -8,6 +8,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limit helper
+async function checkRateLimit(supabaseAdmin: any, key: string, windowMs: number, maxRequests: number): Promise<boolean> {
+  await supabaseAdmin.from("rate_limits").delete().lt("expires_at", new Date().toISOString());
+  const { data } = await supabaseAdmin.from("rate_limits").select("id").eq("key", key).gte("expires_at", new Date().toISOString());
+  if (data && data.length >= maxRequests) return true;
+  await supabaseAdmin.from("rate_limits").insert({ key, expires_at: new Date(Date.now() + windowMs).toISOString() });
+  return false;
+}
+
 interface PackageEmailRequest {
   email: string;
   userName: string;
@@ -22,17 +31,14 @@ serve(async (req) => {
   }
 
   try {
-    // Verify user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error("Missing authorization header");
       return new Response(JSON.stringify({ error: "Authentication required" }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Create Supabase client to verify the user
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -42,16 +48,24 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      console.error("Authentication failed:", authError?.message);
       return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // Rate limiting: max 5 emails per hour per user
+    const supabaseAdmin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const isLimited = await checkRateLimit(supabaseAdmin, `email:${user.id}`, 3600000, 5);
+    if (isLimited) {
+      return new Response(JSON.stringify({ error: "Too many emails sent. Please wait before sending another." }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { email, userName, packageTitle, packageContent, packageType }: PackageEmailRequest = await req.json();
 
-    // Validate input
     if (!email || !userName || !packageTitle || !packageContent || !packageType) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
@@ -59,7 +73,6 @@ serve(async (req) => {
       });
     }
 
-    // Validate content lengths
     if (packageTitle.length > 200 || packageContent.length > 50000) {
       return new Response(JSON.stringify({ error: "Content too long" }), {
         status: 400,
@@ -67,15 +80,9 @@ serve(async (req) => {
       });
     }
 
-    // Admin email from environment (Resend account owner - works in testing mode)
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
-    
-    // Check if custom domain is configured via environment variable
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
     const hasVerifiedDomain = !FROM_EMAIL.includes("resend.dev");
-    
-    // In testing mode (no verified domain), only send to admin email
-    // With verified domain, send to actual user email
     const recipientEmail = hasVerifiedDomain ? email : ADMIN_EMAIL;
     
     console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}${!hasVerifiedDomain ? ' (testing mode - admin only)' : ''}`);

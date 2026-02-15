@@ -14,6 +14,17 @@ const isStaffUser = (email: string | undefined): boolean => {
          email.toLowerCase().endsWith("@aclicktorwanda.com");
 };
 
+// Audit logger helper
+async function auditLog(supabaseClient: any, staffUserId: string, action: string, entityType: string, entityId?: string, changes?: any) {
+  await supabaseClient.from("staff_audit_log").insert({
+    staff_user_id: staffUserId,
+    action,
+    entity_type: entityType,
+    entity_id: entityId || null,
+    changes: changes || null,
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -88,6 +99,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "create", "destination", id, { name });
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -101,6 +113,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "update", "destination", id, updates);
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -109,6 +122,7 @@ serve(async (req) => {
         const { id } = payload;
         const { error } = await supabaseClient.from("destinations").delete().eq("id", id);
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "delete", "destination", id);
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -125,6 +139,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "create", "hotel", id, { name });
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -138,6 +153,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "update", "hotel", id, updates);
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -146,6 +162,7 @@ serve(async (req) => {
         const { id } = payload;
         const { error } = await supabaseClient.from("hotels").delete().eq("id", id);
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "delete", "hotel", id);
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -162,6 +179,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "create", "tour_company_image", data.id, { company_id });
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -170,6 +188,7 @@ serve(async (req) => {
         const { id } = payload;
         const { error } = await supabaseClient.from("tour_company_images").delete().eq("id", id);
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "delete", "tour_company_image", id);
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -185,7 +204,6 @@ serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
-        // Audit log
         await supabaseClient.from("sos_audit_log").insert({
           staff_user_id: user.id,
           action: "list_alerts",
@@ -203,6 +221,7 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
+        await auditLog(supabaseClient, user.id, "resolve", "sos_alert", id);
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -250,11 +269,11 @@ serve(async (req) => {
           .select()
           .single();
         if (error) throw error;
-        // Update conversation timestamp
         await supabaseClient
           .from("conversations")
           .update({ updated_at: new Date().toISOString() })
           .eq("id", conversation_id);
+        await auditLog(supabaseClient, user.id, "send_message", "message", data.id, { conversation_id });
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

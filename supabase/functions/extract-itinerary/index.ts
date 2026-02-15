@@ -6,13 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limit helper
+async function checkRateLimit(supabaseAdmin: any, key: string, windowMs: number, maxRequests: number): Promise<boolean> {
+  await supabaseAdmin.from("rate_limits").delete().lt("expires_at", new Date().toISOString());
+  const { data } = await supabaseAdmin.from("rate_limits").select("id").eq("key", key).gte("expires_at", new Date().toISOString());
+  if (data && data.length >= maxRequests) return true;
+  await supabaseAdmin.from("rate_limits").insert({ key, expires_at: new Date(Date.now() + windowMs).toISOString() });
+  return false;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Authentication required" }), {
@@ -36,6 +44,16 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: max 10 extractions per hour per user
+    const supabaseAdmin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const isLimited = await checkRateLimit(supabaseAdmin, `extract:${user.id}`, 3600000, 10);
+    if (isLimited) {
+      return new Response(JSON.stringify({ error: "Too many extraction requests. Please wait." }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { fileContent, fileName, fileType, destinations, hotels, activities } = await req.json();
     
     if (!fileContent) {
@@ -55,7 +73,6 @@ serve(async (req) => {
     const hotelNames = hotels.map((h: { name: string }) => h.name).join(', ');
     const activityNames = activities.map((a: { name: string }) => a.name).join(', ');
 
-    // Prepare the message for the AI
     const systemPrompt = `You are an expert travel itinerary parser. Your job is to extract structured itinerary information from documents.
 
 AVAILABLE DESTINATIONS in Rwanda: ${destinationNames}
@@ -85,9 +102,7 @@ RULES:
 
     let userContent: any[];
 
-    // Handle different file types
     if (fileType.startsWith('image/')) {
-      // For images, use vision capability
       const mimeType = fileType;
       userContent = [
         {
@@ -102,13 +117,9 @@ RULES:
         }
       ];
     } else {
-      // For text/PDF/Word - decode base64 and extract text
-      // Note: For PDFs and Word docs, we'll send the base64 and let the AI try to interpret
-      // In production, you might want to use a proper document parsing library
       let textContent = '';
       
       try {
-        // Try to decode as text
         const decoded = atob(fileContent);
         textContent = decoded;
       } catch {
@@ -132,7 +143,7 @@ RULES:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: fileType.startsWith('image/') ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
@@ -155,10 +166,8 @@ RULES:
     
     console.log("AI response:", content);
 
-    // Parse the JSON from the AI response
     let itinerary = [];
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         itinerary = JSON.parse(jsonMatch[0]);
