@@ -14,6 +14,15 @@ const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
 const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
 const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 
+// Rate limit helper
+async function checkRateLimit(supabaseAdmin: any, key: string, windowMs: number, maxRequests: number): Promise<boolean> {
+  await supabaseAdmin.from("rate_limits").delete().lt("expires_at", new Date().toISOString());
+  const { data } = await supabaseAdmin.from("rate_limits").select("id").eq("key", key).gte("expires_at", new Date().toISOString());
+  if (data && data.length >= maxRequests) return true;
+  await supabaseAdmin.from("rate_limits").insert({ key, expires_at: new Date(Date.now() + windowMs).toISOString() });
+  return false;
+}
+
 interface SOSAlertRequest {
   latitude: number | null;
   longitude: number | null;
@@ -48,6 +57,20 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Rate limiting: max 3 SOS alerts per hour per user
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const isLimited = await checkRateLimit(supabaseAdmin, `sos:${user.id}`, 3600000, 3);
+    if (isLimited) {
+      return new Response(
+        JSON.stringify({ error: "Too many SOS alerts. Please wait before sending another." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -97,12 +120,6 @@ const handler = async (req: Request): Promise<Response> => {
     const timestamp = new Date().toLocaleString('en-US', { 
       timeZone: 'Africa/Kigali', dateStyle: 'full', timeStyle: 'long'
     });
-
-    // Save alert to database using service role
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
 
     await supabaseAdmin.from("sos_alerts").insert({
       user_id: user.id,
