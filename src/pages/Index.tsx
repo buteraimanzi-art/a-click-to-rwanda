@@ -51,6 +51,10 @@ const heroSlides = [
   {
     title: "Your Adventure Awaits",
     subtitle: "One platform for hotels, activities, transport, and exclusive tours"
+  },
+  {
+    title: "Plan Your Dream Itinerary",
+    subtitle: "Use our smart planner to build day-by-day travel plans tailored to your interests"
   }
 ];
 
