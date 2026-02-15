@@ -52,34 +52,27 @@ const StaffPortal = () => {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const { data: subsData, count: subsCount } = await supabase
-        .from('subscriptions')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      const { data: reviewsData, count: reviewsCount } = await supabase
-        .from('reviews')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      const { data: itinData, count: itinCount } = await supabase
-        .from('itineraries')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      setStats({
-        totalUsers: subsCount || 0,
-        activeSubscriptions: subsData?.filter(s => s.status === 'active').length || 0,
-        totalReviews: reviewsCount || 0,
-        totalItineraries: itinCount || 0,
+      // Route all data queries through the staff-management edge function
+      const { data, error } = await supabase.functions.invoke('staff-management', {
+        body: { entity: 'dashboard', action: 'stats' }
       });
 
-      setSubscriptions(subsData || []);
-      setReviews(reviewsData || []);
-      setItineraries(itinData || []);
+      if (error) {
+        console.error('Error fetching dashboard data:', error);
+        setIsLoading(false);
+        return;
+      }
+
+      setStats({
+        totalUsers: data.subscriptionsCount || 0,
+        activeSubscriptions: data.subscriptions?.filter((s: any) => s.status === 'active').length || 0,
+        totalReviews: data.reviewsCount || 0,
+        totalItineraries: data.itinerariesCount || 0,
+      });
+
+      setSubscriptions(data.subscriptions || []);
+      setReviews(data.reviews || []);
+      setItineraries(data.itineraries || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
