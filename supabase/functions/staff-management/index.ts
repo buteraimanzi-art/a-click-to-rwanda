@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,8 +30,6 @@ serve(async (req) => {
       });
     }
 
-    const email = user.email?.toLowerCase() || "";
-    const isStaff = email === ADMIN_EMAIL || email.endsWith("@aclicktorwanda.com");
     if (!isStaff) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -39,6 +37,18 @@ serve(async (req) => {
     }
 
     const { entity, action, ...payload } = await req.json();
+
+    // AUTH CHECK - verify if current user is staff
+    if (entity === "auth" && action === "check_staff") {
+      const email = user.email?.toLowerCase() || "";
+      const isStaff = email === ADMIN_EMAIL.toLowerCase() || email.endsWith("@aclicktorwanda.com");
+      return new Response(JSON.stringify({ isStaff }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const email = user.email?.toLowerCase() || "";
+    const isStaff = email === ADMIN_EMAIL.toLowerCase() || email.endsWith("@aclicktorwanda.com");
 
     // DESTINATIONS
     if (entity === "destination") {
@@ -147,6 +157,11 @@ serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(100);
         if (error) throw error;
+        // Audit log
+        await supabaseClient.from("sos_audit_log").insert({
+          staff_user_id: user.id,
+          action: "list_alerts",
+        });
         return new Response(JSON.stringify(data), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

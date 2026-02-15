@@ -96,9 +96,11 @@ const StaffPortal = () => {
         return;
       }
 
-      const userEmail = session.user.email?.toLowerCase();
-      const isStaff = userEmail === 'buteraimanzi@gmail.com' || 
-                      userEmail?.endsWith('@aclicktorwanda.com');
+      // Verify staff access via edge function
+      const { data: staffCheck, error: staffError } = await supabase.functions.invoke('staff-management', {
+        body: { entity: 'auth', action: 'check_staff' }
+      });
+      const isStaff = !staffError && staffCheck?.isStaff;
 
       if (!isStaff) {
         navigate('/');

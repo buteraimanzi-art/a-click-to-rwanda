@@ -67,8 +67,8 @@ serve(async (req) => {
       });
     }
 
-    // Admin email that always works (Resend account owner - works in testing mode)
-    const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+    // Admin email from environment (Resend account owner - works in testing mode)
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
     
     // Check if custom domain is configured via environment variable
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
