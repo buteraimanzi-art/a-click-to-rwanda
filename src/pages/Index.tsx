@@ -4,6 +4,7 @@ import heroImage from '@/assets/hero-rwanda.jpg';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Check, X } from 'lucide-react';
 
 // Import destination images
 import akageraImg from '@/assets/destinations/akagera-national-park.jpg';
@@ -178,6 +179,93 @@ const Index = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Plans Section */}
+      <section className="py-16 md:py-24 px-4 md:px-8 bg-muted/30">
+        <div className="max-w-5xl mx-auto">
+          <h3 className="text-3xl md:text-4xl font-bold text-center mb-4">Choose Your Plan</h3>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Explore Rwanda your way — browse for free or unlock direct bookings with our Annual plan.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Free Plan */}
+            <div className="rounded-2xl border border-border bg-card p-8 flex flex-col">
+              <h4 className="text-2xl font-bold text-card-foreground">Free</h4>
+              <p className="text-muted-foreground mt-2 text-sm">Perfect for exploring and planning</p>
+              <div className="mt-6 mb-8">
+                <span className="text-4xl font-bold text-card-foreground">$0</span>
+                <span className="text-muted-foreground ml-1">/ forever</span>
+              </div>
+              <ul className="space-y-3 flex-grow">
+                {[
+                  { text: 'Browse all destinations', included: true },
+                  { text: 'Build & save itineraries', included: true },
+                  { text: 'AI travel planner', included: true },
+                  { text: 'Interactive map', included: true },
+                  { text: 'Read & write reviews', included: true },
+                  { text: 'Direct hotel booking', included: false },
+                  { text: 'Direct activity booking', included: false },
+                  { text: 'Car rental booking', included: false },
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    {feature.included ? (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                    )}
+                    <span className={feature.included ? 'text-card-foreground' : 'text-muted-foreground/50'}>
+                      {feature.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                variant="outline"
+                className="mt-8 w-full"
+                onClick={() => navigate('/login')}
+              >
+                Get Started
+              </Button>
+            </div>
+
+            {/* Annual Plan */}
+            <div className="rounded-2xl border-2 border-primary bg-card p-8 flex flex-col relative overflow-hidden">
+              <div className="absolute top-4 right-4 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                BEST VALUE
+              </div>
+              <h4 className="text-2xl font-bold text-card-foreground">Annual</h4>
+              <p className="text-muted-foreground mt-2 text-sm">Full access to every service</p>
+              <div className="mt-6 mb-8">
+                <span className="text-4xl font-bold text-card-foreground">$50</span>
+                <span className="text-muted-foreground ml-1">/ year</span>
+              </div>
+              <ul className="space-y-3 flex-grow">
+                {[
+                  'Browse all destinations',
+                  'Build & save itineraries',
+                  'AI travel planner',
+                  'Interactive map',
+                  'Read & write reviews',
+                  'Direct hotel booking',
+                  'Direct activity booking',
+                  'Car rental booking',
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2 text-sm">
+                    <Check className="h-4 w-4 text-primary shrink-0" />
+                    <span className="text-card-foreground">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="mt-8 w-full"
+                onClick={() => window.open('https://www.paypal.com/ncp/payment/YD6M888AMR5XW', '_blank')}
+              >
+                Subscribe Now
+              </Button>
+            </div>
           </div>
         </div>
       </section>
