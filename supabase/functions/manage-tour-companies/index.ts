@@ -6,7 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
+// Database-backed staff check
+async function checkIsStaff(supabaseAdmin: any, userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc("is_staff", { _user_id: userId });
+  if (error) {
+    console.error("Error checking staff role:", error);
+    return false;
+  }
+  return data === true;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,9 +38,7 @@ serve(async (req) => {
       });
     }
 
-    const email = user.email?.toLowerCase() || "";
-    const isStaff = email === ADMIN_EMAIL || email.endsWith("@aclicktorwanda.com");
-    if (!isStaff) {
+    if (!(await checkIsStaff(supabaseClient, user.id))) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

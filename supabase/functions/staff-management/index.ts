@@ -6,13 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
-
-const isStaffUser = (email: string | undefined): boolean => {
-  if (!email) return false;
-  return email.toLowerCase() === ADMIN_EMAIL.toLowerCase() || 
-         email.toLowerCase().endsWith("@aclicktorwanda.com");
-};
+// Database-backed staff check using the is_staff() function
+async function checkIsStaff(supabaseAdmin: any, userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc("is_staff", { _user_id: userId });
+  if (error) {
+    console.error("Error checking staff role:", error);
+    return false;
+  }
+  return data === true;
+}
 
 // Audit logger helper
 async function auditLog(supabaseClient: any, staffUserId: string, action: string, entityType: string, entityId?: string, changes?: any) {
@@ -49,16 +51,17 @@ serve(async (req) => {
 
     const { entity, action, ...payload } = await req.json();
 
-    // AUTH CHECK - verify if current user is staff (no staff guard needed for this action)
+    // AUTH CHECK - verify if current user is staff via database roles
     if (entity === "auth" && action === "check_staff") {
-      return new Response(JSON.stringify({ isStaff: isStaffUser(user.email) }), {
+      const isStaff = await checkIsStaff(supabaseClient, user.id);
+      return new Response(JSON.stringify({ isStaff }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // DASHBOARD STATS - staff only
     if (entity === "dashboard" && action === "stats") {
-      if (!isStaffUser(user.email)) {
+      if (!(await checkIsStaff(supabaseClient, user.id))) {
         return new Response(JSON.stringify({ error: "Forbidden" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -83,7 +86,7 @@ serve(async (req) => {
     }
 
     // All remaining actions require staff access
-    if (!isStaffUser(user.email)) {
+    if (!(await checkIsStaff(supabaseClient, user.id))) {
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

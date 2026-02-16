@@ -125,9 +125,14 @@ serve(async (req) => {
       day: 'numeric'
     });
 
-    // Always send to the verified email address (Resend testing mode limitation)
-    const verifiedEmail = "buteraimanzi@gmail.com";
-    console.log(`Sending daily reminder to ${verifiedEmail} for user ${user.id} (requested: ${userEmail})`);
+    // Use the actual user email; for Resend test mode, use env var fallback
+    const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const isTestMode = FROM_EMAIL.includes("resend.dev");
+    const recipientEmail = isTestMode ? (Deno.env.get("TEST_EMAIL") || userEmail) : userEmail;
+    if (isTestMode) {
+      console.warn(`Resend test mode: sending to ${recipientEmail} instead of ${userEmail}`);
+    }
+    console.log(`Sending daily reminder to ${recipientEmail} for user ${user.id}`);
 
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -137,7 +142,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: "A Click to Rwanda <onboarding@resend.dev>",
-        to: [verifiedEmail],
+        to: [recipientEmail],
         subject: `🌅 Today's Rwanda Adventure - ${formattedDate}`,
         html: `
 <!DOCTYPE html>
