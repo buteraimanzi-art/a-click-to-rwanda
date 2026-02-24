@@ -19,25 +19,27 @@ const StaffLogin = () => {
     setIsLoading(true);
 
     try {
+      // 1️⃣ Sign in the user
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      if (error || !data.user) throw error || new Error('Login failed');
 
-      if (error) throw error;
+      // 2️⃣ Check staff role directly from profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .single();
 
-      // Verify staff access via edge function
-      const { data: staffCheck, error: staffError } = await supabase.functions.invoke('staff-management', {
-        body: { entity: 'auth', action: 'check_staff' }
-      });
-      const isStaff = !staffError && staffCheck?.isStaff;
-
-      if (!isStaff) {
+      if (profileError || !profileData || profileData.role !== 'staff') {
         await supabase.auth.signOut();
         toast.error('Access denied. Staff accounts only.');
         return;
       }
 
+      // 3️⃣ Success! Redirect staff
       toast.success('Welcome to Staff Portal!');
       navigate('/staff-portal');
     } catch (error: any) {
