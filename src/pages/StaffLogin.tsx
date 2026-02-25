@@ -26,14 +26,12 @@ const StaffLogin = () => {
       });
       if (error || !data.user) throw error || new Error('Login failed');
 
-      // 2️⃣ Check staff role directly from profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', data.user.id)
-        .single();
+      // 2️⃣ Verify staff access via edge function
+      const { data: staffCheck, error: staffError } = await supabase.functions.invoke('staff-management', {
+        body: { entity: 'auth', action: 'check_staff' }
+      });
 
-      if (profileError || !profileData || profileData.role !== 'staff') {
+      if (staffError || !staffCheck?.isStaff) {
         await supabase.auth.signOut();
         toast.error('Access denied. Staff accounts only.');
         return;
