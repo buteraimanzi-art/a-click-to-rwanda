@@ -86,7 +86,7 @@ serve(async (req) => {
       });
     }
 
-    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "buteraimanzi@gmail.com";
+    const ADMIN_EMAIL = "buteraimanzi@gmail.com";
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
     const hasVerifiedDomain = !FROM_EMAIL.includes("resend.dev");
     // In test mode (resend.dev), always send to admin email
