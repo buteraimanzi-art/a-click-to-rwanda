@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { decode as base64Decode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -180,8 +180,11 @@ const handler = async (req: Request): Promise<Response> => {
     const attachments: any[] = [];
     if (voiceRecording) {
       try {
-        const audioBuffer = base64Decode(voiceRecording);
-        attachments.push({ filename: `sos-voice-recording-${Date.now()}.webm`, content: audioBuffer });
+        attachments.push({
+          filename: `sos-voice-recording-${Date.now()}.webm`,
+          content: voiceRecording,
+          content_type: 'audio/webm',
+        });
       } catch (e) {
         console.error("Error processing voice recording:", e);
       }
