@@ -27,6 +27,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const InteractiveMap = () => {
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(true);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
@@ -34,6 +35,7 @@ const InteractiveMap = () => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   // Initialize map
   useEffect(() => {
@@ -46,6 +48,31 @@ const InteractiveMap = () => {
 
     markersRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+
+    // Auto-locate user on load
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setUserLocation({ lat, lon });
+        setLocating(false);
+
+        const userIcon = L.divIcon({
+          html: '<div style="background:hsl(145,65%,35%);width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);animation:pulse 2s infinite"></div>',
+          iconSize: [16, 16],
+          className: '',
+        });
+        userMarkerRef.current = L.marker([lat, lon], { icon: userIcon })
+          .bindPopup('📍 You are here')
+          .addTo(map);
+
+        map.setView([lat, lon], 14);
+      },
+      () => {
+        setLocating(false);
+        setError('Could not detect your location. Please enable location permissions and refresh.');
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
 
     return () => {
       map.remove();
@@ -60,15 +87,22 @@ const InteractiveMap = () => {
     setShowResults(true);
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-        });
-      });
+      let lat: number, lon: number;
 
-      const { latitude: lat, longitude: lon } = position.coords;
-      setUserLocation({ lat, lon });
+      if (userLocation) {
+        lat = userLocation.lat;
+        lon = userLocation.lon;
+      } else {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+          });
+        });
+        lat = position.coords.latitude;
+        lon = position.coords.longitude;
+        setUserLocation({ lat, lon });
+      }
 
       // Query Overpass API for nearby restaurants within 5km
       const query = `
@@ -178,11 +212,31 @@ const InteractiveMap = () => {
       {/* Map */}
       <div ref={mapContainerRef} className="w-full h-[400px] rounded-xl overflow-hidden shadow-lg border border-border mb-6" />
 
+      {/* Location status */}
+      {locating && (
+        <div className="flex items-center justify-center gap-2 mb-4 text-sm text-muted-foreground">
+          <Loader2 className="animate-spin" size={16} />
+          Detecting your location...
+        </div>
+      )}
+      {userLocation && !locating && (
+        <div className="flex items-center justify-center gap-2 mb-4 text-sm text-primary">
+          <MapPin size={16} />
+          Location found — ready to search nearby
+        </div>
+      )}
+      {!userLocation && !locating && error && (
+        <div className="flex items-center justify-center gap-2 mb-4 text-sm text-destructive">
+          <MapPin size={16} />
+          {error}
+        </div>
+      )}
+
       {/* Find Restaurants Button */}
       <div className="flex justify-center mb-6">
         <Button
           onClick={fetchNearbyRestaurants}
-          disabled={loading}
+          disabled={loading || locating || !userLocation}
           size="lg"
           className="gap-2 text-base px-8 py-6 rounded-full shadow-md"
         >
