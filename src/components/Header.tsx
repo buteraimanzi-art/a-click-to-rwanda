@@ -1,4 +1,4 @@
-import { Menu, X, UserCircle, ChevronDown, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, UserCircle, ChevronDown, LogIn, LogOut, Home, Info, Compass, Bot, Crown, Building2, Star, Map } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -33,7 +33,7 @@ export const Header = () => {
     }
   };
 
-  const NavLink = ({ to, children }: { to: string; children: React.ReactNode }) => {
+  const NavLink = ({ to, children, icon }: { to: string; children: React.ReactNode; icon?: React.ReactNode }) => {
     const isActive = location.pathname === to;
     return (
       <button
@@ -41,10 +41,13 @@ export const Header = () => {
           navigate(to);
           setIsMobileMenuOpen(false);
         }}
-        className={`text-foreground hover:text-primary transition font-medium ${
-          isActive ? 'text-primary' : ''
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+          isActive
+            ? 'bg-primary/10 text-primary'
+            : 'text-foreground/70 hover:text-primary hover:bg-primary/5'
         }`}
       >
+        {icon}
         {children}
       </button>
     );
@@ -60,15 +63,15 @@ export const Header = () => {
           </h1>
         </button>
 
-        <nav className="hidden lg:flex items-center space-x-6">
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/about">About Us</NavLink>
-          <NavLink to="/free-independent">Free Independent</NavLink>
-          <NavLink to="/ai-planner">AI Planner</NavLink>
-          <NavLink to="/exclusive">Exclusive</NavLink>
-          <NavLink to="/tour-operators">Tour Manager</NavLink>
-          <NavLink to="/reviews">Reviews</NavLink>
-          <NavLink to="/map">Map</NavLink>
+        <nav className="hidden lg:flex items-center gap-1">
+          <NavLink to="/" icon={<Home size={15} />}>Home</NavLink>
+          <NavLink to="/about" icon={<Info size={15} />}>About</NavLink>
+          <NavLink to="/free-independent" icon={<Compass size={15} />}>Free Independent</NavLink>
+          <NavLink to="/ai-planner" icon={<Bot size={15} />}>AI Planner</NavLink>
+          <NavLink to="/exclusive" icon={<Crown size={15} />}>Exclusive</NavLink>
+          <NavLink to="/tour-operators" icon={<Building2 size={15} />}>Tour Manager</NavLink>
+          <NavLink to="/reviews" icon={<Star size={15} />}>Reviews</NavLink>
+          <NavLink to="/map" icon={<Map size={15} />}>Map</NavLink>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -140,15 +143,15 @@ export const Header = () => {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           <div className="fixed top-16 left-0 right-0 bg-card shadow-xl z-40 lg:hidden border-b border-border">
-            <div className="p-4 flex flex-col space-y-4">
-              <NavLink to="/">Home</NavLink>
-              <NavLink to="/about">About Us</NavLink>
-              <NavLink to="/free-independent">Free Independent</NavLink>
-              <NavLink to="/ai-planner">AI Planner</NavLink>
-              <NavLink to="/exclusive">Exclusive</NavLink>
-              <NavLink to="/tour-operators">Tour Manager</NavLink>
-              <NavLink to="/reviews">Reviews</NavLink>
-              <NavLink to="/map">Map</NavLink>
+          <div className="p-4 flex flex-col gap-1">
+              <NavLink to="/" icon={<Home size={16} />}>Home</NavLink>
+              <NavLink to="/about" icon={<Info size={16} />}>About</NavLink>
+              <NavLink to="/free-independent" icon={<Compass size={16} />}>Free Independent</NavLink>
+              <NavLink to="/ai-planner" icon={<Bot size={16} />}>AI Planner</NavLink>
+              <NavLink to="/exclusive" icon={<Crown size={16} />}>Exclusive</NavLink>
+              <NavLink to="/tour-operators" icon={<Building2 size={16} />}>Tour Manager</NavLink>
+              <NavLink to="/reviews" icon={<Star size={16} />}>Reviews</NavLink>
+              <NavLink to="/map" icon={<Map size={16} />}>Map</NavLink>
               {user ? (
                 <>
                   <button
