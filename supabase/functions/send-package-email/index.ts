@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Rate limit helper
@@ -31,6 +30,13 @@ serve(async (req) => {
   }
 
   try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Authentication required" }), {
@@ -85,19 +91,17 @@ serve(async (req) => {
     const hasVerifiedDomain = !FROM_EMAIL.includes("resend.dev");
     const recipientEmail = hasVerifiedDomain ? email : ADMIN_EMAIL;
     
+    if (!recipientEmail) {
+      throw new Error("No recipient email configured. Set ADMIN_EMAIL for testing mode or RESEND_FROM_EMAIL with a verified domain.");
+    }
+
     console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}${!hasVerifiedDomain ? ' (testing mode - admin only)' : ''}`);
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [recipientEmail],
-        subject: `Your Rwanda ${packageType === 'ai-planner' ? 'Tour Package' : 'Itinerary'}: ${packageTitle}`,
-        html: `
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [recipientEmail],
+      subject: `Your Rwanda ${packageType === 'ai-planner' ? 'Tour Package' : 'Itinerary'}: ${packageTitle}`,
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -148,16 +152,15 @@ serve(async (req) => {
   </div>
 </body>
 </html>
-        `,
-      }),
+      `,
     });
 
-    const data = await response.json();
-    console.log("Email sent:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to send email");
+    if (error) {
+      console.error("Resend error:", error);
+      throw new Error(error.message || "Failed to send email");
     }
+
+    console.log("Email sent successfully:", data);
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,

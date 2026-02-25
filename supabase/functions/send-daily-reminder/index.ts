@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+import { Resend } from "npm:resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface DailyReminderRequest {
@@ -20,17 +19,22 @@ serve(async (req) => {
   }
 
   try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+
     // Verify user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error("Missing authorization header");
       return new Response(JSON.stringify({ error: "Authentication required" }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Create Supabase client to verify the user and fetch data
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -40,7 +44,6 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      console.error("Authentication failed:", authError?.message);
       return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,7 +58,6 @@ serve(async (req) => {
 
     console.log(`Checking for itinerary on ${todayStr} for user ${user.id}`);
 
-    // Fetch today's itinerary items for this user
     const { data: todayItems, error: fetchError } = await supabase
       .from('itineraries')
       .select('*')
@@ -68,7 +70,6 @@ serve(async (req) => {
     }
 
     if (!todayItems || todayItems.length === 0) {
-      console.log("No itinerary items for today");
       return new Response(JSON.stringify({ 
         success: true, 
         message: "No activities scheduled for today" 
@@ -97,7 +98,6 @@ serve(async (req) => {
     const activities = activitiesRes.data || [];
     const hotels = hotelsRes.data || [];
 
-    // Build the email content
     const scheduleItems = todayItems.map((item) => {
       const destination = destinations.find(d => d.id === item.destination_id);
       const activity = activities.find(a => a.id === item.activity_id);
@@ -125,26 +125,26 @@ serve(async (req) => {
       day: 'numeric'
     });
 
-    // Use the actual user email; for Resend test mode, use env var fallback
-    const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    // Determine recipient based on testing mode
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
+    const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
     const isTestMode = FROM_EMAIL.includes("resend.dev");
-    const recipientEmail = isTestMode ? (Deno.env.get("TEST_EMAIL") || userEmail) : userEmail;
+    const recipientEmail = isTestMode ? (ADMIN_EMAIL || userEmail) : userEmail;
+
+    if (!recipientEmail) {
+      throw new Error("No recipient email configured. Set ADMIN_EMAIL for testing mode.");
+    }
+
     if (isTestMode) {
       console.warn(`Resend test mode: sending to ${recipientEmail} instead of ${userEmail}`);
     }
     console.log(`Sending daily reminder to ${recipientEmail} for user ${user.id}`);
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: "A Click to Rwanda <onboarding@resend.dev>",
-        to: [recipientEmail],
-        subject: `🌅 Today's Rwanda Adventure - ${formattedDate}`,
-        html: `
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [recipientEmail],
+      subject: `🌅 Today's Rwanda Adventure - ${formattedDate}`,
+      html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -165,7 +165,6 @@ serve(async (req) => {
     .activity-box { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin: 12px 0; }
     .notes-box { background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-top: 12px; font-style: italic; }
     .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #eee; font-size: 12px; }
-    .emoji { font-size: 20px; }
   </style>
 </head>
 <body>
@@ -177,7 +176,7 @@ serve(async (req) => {
     <div class="content">
       <p class="greeting">Here's your schedule for today's adventure in Rwanda:</p>
       
-      ${scheduleItems.map((item, index) => `
+      ${scheduleItems.map((item) => `
         <div class="schedule-card">
           <div class="schedule-title">
             ${item.isTransfer ? '🚗 Transfer Day' : '📍 ' + item.destination}
@@ -237,16 +236,15 @@ serve(async (req) => {
   </div>
 </body>
 </html>
-        `,
-      }),
+      `,
     });
 
-    const data = await response.json();
-    console.log("Daily reminder email sent:", data);
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to send email");
+    if (error) {
+      console.error("Resend error:", error);
+      throw new Error(error.message || "Failed to send email");
     }
+
+    console.log("Daily reminder email sent:", data);
 
     return new Response(JSON.stringify({ 
       success: true, 

@@ -1,18 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { Resend } from "npm:resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decode as base64Decode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
-const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
-const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 
 // Rate limit helper
 async function checkRateLimit(supabaseAdmin: any, key: string, windowMs: number, maxRequests: number): Promise<boolean> {
@@ -23,21 +17,27 @@ async function checkRateLimit(supabaseAdmin: any, key: string, windowMs: number,
   return false;
 }
 
-interface SOSAlertRequest {
-  latitude: number | null;
-  longitude: number | null;
-  locationAvailable: boolean;
-  phoneNumber: string;
-  description: string;
-  voiceRecording: string | null;
-}
-
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
+    const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
+    const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
+
+    if (!EMERGENCY_EMAIL) {
+      throw new Error("No emergency email configured. Set ADMIN_EMAIL or EMERGENCY_CONTACT_EMAIL.");
+    }
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -93,7 +93,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Description length limit
     if (description.length > 2000) {
       return new Response(
         JSON.stringify({ error: "Description must be under 2000 characters" }),
@@ -101,7 +100,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Latitude/longitude validation
     if (latitude !== null && (isNaN(latitude) || latitude < -90 || latitude > 90)) {
       return new Response(
         JSON.stringify({ error: "Invalid latitude" }),
@@ -179,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       </body></html>`;
 
-    const attachments = [];
+    const attachments: any[] = [];
     if (voiceRecording) {
       try {
         const audioBuffer = base64Decode(voiceRecording);
@@ -197,8 +195,14 @@ const handler = async (req: Request): Promise<Response> => {
     };
     if (attachments.length > 0) emailPayload.attachments = attachments;
 
-    const emailResponse = await resend.emails.send(emailPayload);
-    console.log("SOS Alert email sent:", emailResponse);
+    const { data: emailData, error: emailError } = await resend.emails.send(emailPayload);
+    
+    if (emailError) {
+      console.error("Resend error:", emailError);
+      throw new Error(emailError.message || "Failed to send SOS alert email");
+    }
+
+    console.log("SOS Alert email sent:", emailData);
 
     return new Response(
       JSON.stringify({ success: true, message: "SOS alert sent successfully" }),
