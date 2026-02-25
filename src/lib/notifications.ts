@@ -1,5 +1,51 @@
 // Notification utilities for device notifications
 
+// Generate alarm sound using Web Audio API
+const playAlarmSound = (type: 'wake' | 'meal' | 'reminder' = 'reminder') => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const now = ctx.currentTime;
+
+    const patterns: Record<string, { freqs: number[]; durations: number[]; gap: number; repeats: number }> = {
+      wake: { freqs: [880, 1100, 880, 1100], durations: [0.15, 0.15, 0.15, 0.15], gap: 0.1, repeats: 3 },
+      meal: { freqs: [660, 880], durations: [0.2, 0.3], gap: 0.15, repeats: 2 },
+      reminder: { freqs: [523, 659, 784], durations: [0.15, 0.15, 0.2], gap: 0.1, repeats: 1 },
+    };
+
+    const pattern = patterns[type];
+    let t = now;
+
+    for (let r = 0; r < pattern.repeats; r++) {
+      pattern.freqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + pattern.durations[i]);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + pattern.durations[i]);
+        t += pattern.durations[i] + pattern.gap;
+      });
+      t += 0.3; // gap between repeats
+    }
+
+    // Close context after playback
+    setTimeout(() => ctx.close(), (t - now) * 1000 + 500);
+  } catch (e) {
+    console.warn('Could not play alarm sound:', e);
+  }
+};
+
+// Determine alarm type from notification tag
+const getAlarmType = (tag: string): 'wake' | 'meal' | 'reminder' => {
+  if (tag.startsWith('wake-')) return 'wake';
+  if (tag.startsWith('breakfast-') || tag.startsWith('lunch-') || tag.startsWith('dinner-')) return 'meal';
+  return 'reminder';
+};
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
     console.warn('This browser does not support notifications');
@@ -115,24 +161,25 @@ export const scheduleItineraryNotifications = (
 
 export const sendNotification = (title: string, body: string, tag: string) => {
   if (Notification.permission === 'granted') {
+    // Play audible alarm based on notification type
+    playAlarmSound(getAlarmType(tag));
+
     const notification = new Notification(title, {
       body,
       tag,
       icon: '/favicon.ico',
       badge: '/favicon.ico',
-      requireInteraction: true, // Keep notification visible until user interacts
-      silent: false, // Enable system sound
+      requireInteraction: true,
+      silent: false,
     } as NotificationOptions);
 
-    // Handle notification click
     notification.onclick = () => {
       window.focus();
       notification.close();
     };
 
-    // Try to vibrate if supported
     if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200]);
+      navigator.vibrate([200, 100, 200, 100, 200]);
     }
   }
 };
@@ -178,9 +225,10 @@ export const sendTestNotification = async (): Promise<boolean> => {
   const hasPermission = await requestNotificationPermission();
   
   if (hasPermission) {
+    playAlarmSound('reminder');
     sendNotification(
       '🔔 Test Notification',
-      'Great! Your device notifications are working. You will receive reminders for your itinerary.',
+      'Great! Your device notifications and alarm sounds are working. You will receive reminders for your itinerary.',
       'test-notification'
     );
     return true;
