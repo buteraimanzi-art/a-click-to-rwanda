@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Check, Shield, MapPin, Calendar, Car, Loader2 } from 'lucide-react';
+import { CreditCard, Check, Shield, MapPin, Calendar, Car, Loader2, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PaywallModalProps {
@@ -9,12 +9,24 @@ interface PaywallModalProps {
   onClose: () => void;
   onPayment: () => void;
   onActivate: (ref: string) => Promise<boolean>;
+  nationality?: string;
+  price?: number;
 }
 
-export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: PaywallModalProps) => {
+const PRICING: Record<string, { price: number; label: string }> = {
+  rwandan: { price: 0, label: '🇷🇼 Rwandan Resident — Free' },
+  east_african: { price: 10, label: '🌍 East African — $10/year' },
+  foreigner: { price: 50, label: '✈️ International — $50/year' },
+};
+
+export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate, nationality = 'foreigner', price }: PaywallModalProps) => {
   const [step, setStep] = useState<'info' | 'confirm'>('info');
   const [isActivating, setIsActivating] = useState(false);
   const [paymentRef, setPaymentRef] = useState('');
+
+  const tier = PRICING[nationality] || PRICING.foreigner;
+  const displayPrice = price ?? tier.price;
+  const isFree = displayPrice === 0;
 
   const features = [
     { icon: Calendar, text: "Unlimited itinerary bookings" },
@@ -24,8 +36,41 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
   ];
 
   const handlePayment = () => {
+    if (isFree) {
+      // Auto-activate for Rwandan residents
+      handleFreeActivation();
+      return;
+    }
     onPayment();
     setStep('confirm');
+  };
+
+  const handleFreeActivation = async () => {
+    setIsActivating(true);
+    const success = await onActivate('RWANDAN_RESIDENT_FREE');
+    setIsActivating(false);
+    if (success) {
+      toast.success('Free access activated! Enjoy your Rwanda adventure.');
+      onClose();
+      setStep('info');
+    } else {
+      toast.error('Failed to activate. Please try again.');
+    }
+  };
+
+  const handleDemoPayment = async () => {
+    setIsActivating(true);
+    const demoRef = `DEMO-${nationality.toUpperCase()}-${Date.now()}`;
+    const success = await onActivate(demoRef);
+    setIsActivating(false);
+    if (success) {
+      toast.success('Demo payment successful! Subscription activated.');
+      onClose();
+      setStep('info');
+      setPaymentRef('');
+    } else {
+      toast.error('Failed to activate subscription.');
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -70,12 +115,23 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
         </DialogHeader>
 
         {step === 'info' ? (
-          <div className="space-y-6 py-4">
+          <div className="space-y-5 py-4">
+            {/* Nationality badge */}
+            <div className="flex items-center justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+                <Globe className="h-3 w-3" />
+                {tier.label}
+              </span>
+            </div>
+
             {/* Price display */}
             <div className="text-center p-6 bg-primary/10 rounded-lg border border-primary/20">
-              <div className="text-4xl font-bold text-primary">$50</div>
-              <div className="text-sm text-muted-foreground mt-1">One-time payment</div>
-              <div className="text-xs text-muted-foreground">Lifetime access</div>
+              <div className="text-4xl font-bold text-primary">
+                {isFree ? 'Free' : `$${displayPrice}`}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {isFree ? 'No payment required' : 'Per year'}
+              </div>
             </div>
 
             {/* Features list */}
@@ -93,7 +149,6 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
               ))}
             </div>
 
-            {/* Info note */}
             <p className="text-xs text-muted-foreground text-center">
               You can create and plan your itinerary for free. 
               Subscribe when you're ready to book hotels, activities, and cars.
@@ -101,14 +156,44 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
 
             {/* CTA buttons */}
             <div className="space-y-2">
-              <Button 
-                onClick={handlePayment} 
-                className="w-full bg-[#0070ba] hover:bg-[#005ea6] text-white"
-                size="lg"
-              >
-                <CreditCard className="mr-2 h-5 w-5" />
-                Pay with PayPal
-              </Button>
+              {isFree ? (
+                <Button 
+                  onClick={handleFreeActivation} 
+                  className="w-full"
+                  size="lg"
+                  disabled={isActivating}
+                >
+                  {isActivating ? (
+                    <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Activating...</>
+                  ) : (
+                    <><Check className="mr-2 h-5 w-5" /> Activate Free Access</>
+                  )}
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    onClick={handlePayment} 
+                    className="w-full bg-[#0070ba] hover:bg-[#005ea6] text-white"
+                    size="lg"
+                  >
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    Pay ${displayPrice} with PayPal
+                  </Button>
+                  <Button
+                    onClick={handleDemoPayment}
+                    variant="outline"
+                    className="w-full border-dashed border-2 border-primary/40"
+                    size="lg"
+                    disabled={isActivating}
+                  >
+                    {isActivating ? (
+                      <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                    ) : (
+                      <>🎮 Demo Payment (Test Mode)</>
+                    )}
+                  </Button>
+                </>
+              )}
               <Button 
                 variant="ghost" 
                 onClick={handleClose}
@@ -116,6 +201,17 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
               >
                 Continue planning for free
               </Button>
+            </div>
+
+            {/* Pricing comparison */}
+            <div className="border border-border rounded-lg p-3 space-y-1.5">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">All Plans</h4>
+              {Object.values(PRICING).map((p) => (
+                <div key={p.label} className={`flex items-center justify-between text-xs px-2 py-1 rounded ${p.label === tier.label ? 'bg-primary/10 font-semibold' : ''}`}>
+                  <span>{p.label.split(' — ')[0]}</span>
+                  <span>{p.price === 0 ? 'Free' : `$${p.price}/yr`}</span>
+                </div>
+              ))}
             </div>
 
             {/* Trust badges */}
@@ -160,15 +256,9 @@ export const PaywallModal = ({ isOpen, onClose, onPayment, onActivate }: Paywall
                 disabled={isActivating || !paymentRef.trim()}
               >
                 {isActivating ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Activating...
-                  </>
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Activating...</>
                 ) : (
-                  <>
-                    <Check className="mr-2 h-5 w-5" />
-                    Activate Subscription
-                  </>
+                  <><Check className="mr-2 h-5 w-5" /> Activate Subscription</>
                 )}
               </Button>
               <Button 

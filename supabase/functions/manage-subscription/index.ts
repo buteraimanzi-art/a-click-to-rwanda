@@ -6,23 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Database-backed staff check
+const PRICING: Record<string, number> = {
+  rwandan: 0,
+  east_african: 10,
+  foreigner: 50,
+};
+
 async function checkIsStaff(supabaseAdmin: any, userId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin.rpc("is_staff", { _user_id: userId });
-  if (error) {
-    console.error("Error checking staff role:", error);
-    return false;
-  }
+  if (error) { console.error("Error checking staff role:", error); return false; }
   return data === true;
 }
 
-// Database-backed admin check
 async function checkIsAdmin(supabaseAdmin: any, userId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin.rpc("has_role", { _user_id: userId, _role: "admin" });
-  if (error) {
-    console.error("Error checking admin role:", error);
-    return false;
-  }
+  if (error) { console.error("Error checking admin role:", error); return false; }
   return data === true;
 }
 
@@ -61,7 +59,6 @@ serve(async (req) => {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Audit logger helper
     const logAudit = async (action: string, entityId?: string, changes?: any) => {
       await supabaseAdmin.from("staff_audit_log").insert({
         staff_user_id: user.id,
@@ -95,7 +92,6 @@ serve(async (req) => {
         .eq("id", subscription_id);
 
       if (updateError) {
-        console.error("Error updating subscription:", updateError);
         return new Response(
           JSON.stringify({ error: "Failed to update subscription" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -131,7 +127,6 @@ serve(async (req) => {
         .eq("id", subscription_id);
 
       if (deleteError) {
-        console.error("Error deleting subscription:", deleteError);
         return new Response(
           JSON.stringify({ error: "Failed to delete subscription" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -161,6 +156,16 @@ serve(async (req) => {
         );
       }
 
+      // Look up target user nationality for correct pricing
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("nationality")
+        .eq("user_id", target_user_id)
+        .maybeSingle();
+
+      const nat = profile?.nationality || "foreigner";
+      const amount = PRICING[nat] ?? 50;
+
       const { data: existing } = await supabaseAdmin
         .from("subscriptions")
         .select("id")
@@ -173,7 +178,8 @@ serve(async (req) => {
           .update({ 
             status: "active", 
             payment_reference: payment_reference || "STAFF_CREATED",
-            payment_method: "staff_manual"
+            payment_method: "staff_manual",
+            amount
           })
           .eq("user_id", target_user_id);
         if (updateError) {
@@ -189,7 +195,7 @@ serve(async (req) => {
             user_id: target_user_id,
             payment_method: "staff_manual",
             payment_reference: payment_reference || "STAFF_CREATED",
-            amount: 50.00,
+            amount,
             status: "active"
           });
         if (insertError) {
@@ -200,7 +206,7 @@ serve(async (req) => {
         }
       }
 
-      await logAudit("staff_create", target_user_id, { payment_reference: payment_reference || "STAFF_CREATED" });
+      await logAudit("staff_create", target_user_id, { payment_reference: payment_reference || "STAFF_CREATED", nationality: nat, amount });
       return new Response(
         JSON.stringify({ success: true, message: "Subscription created" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -209,15 +215,10 @@ serve(async (req) => {
 
     // ========== USER ACTIONS ==========
     if (action === "check") {
-      // Check if user is admin (always has access)
       const isAdmin = await checkIsAdmin(supabaseAdmin, user.id);
       if (isAdmin) {
         return new Response(
-          JSON.stringify({ 
-            hasSubscription: true, 
-            isAdmin: true,
-            message: "Admin account - full access" 
-          }),
+          JSON.stringify({ hasSubscription: true, isAdmin: true, message: "Admin account - full access" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -237,23 +238,24 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ 
-          hasSubscription: !!subscription,
-          subscription: subscription,
-          isAdmin: false
-        }),
+        JSON.stringify({ hasSubscription: !!subscription, subscription, isAdmin: false }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "activate") {
-      const { payment_reference } = body;
+      const { payment_reference, nationality, amount } = body;
       if (!payment_reference) {
         return new Response(
           JSON.stringify({ error: "Payment reference required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      const nat = nationality || "foreigner";
+      const finalAmount = amount ?? (PRICING[nat] ?? 50);
+      const isDemo = payment_reference.startsWith("DEMO-") || payment_reference === "RWANDAN_RESIDENT_FREE";
+      const paymentMethod = isDemo ? "demo" : "paypal";
 
       const { data: existing } = await supabaseAdmin
         .from("subscriptions")
@@ -264,7 +266,7 @@ serve(async (req) => {
       if (existing) {
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
-          .update({ status: "active", payment_reference, payment_method: "paypal" })
+          .update({ status: "active", payment_reference, payment_method: paymentMethod, amount: finalAmount })
           .eq("user_id", user.id);
         if (updateError) {
           return new Response(
@@ -277,9 +279,9 @@ serve(async (req) => {
           .from("subscriptions")
           .insert({
             user_id: user.id,
-            payment_method: "paypal",
+            payment_method: paymentMethod,
             payment_reference,
-            amount: 50.00,
+            amount: finalAmount,
             status: "active"
           });
         if (insertError) {

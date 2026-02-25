@@ -108,7 +108,9 @@ const FreeIndependent = () => {
     activateSubscription,
     showPaywall,
     setShowPaywall,
-    requireSubscription
+    requireSubscription,
+    nationality,
+    price
   } = useSubscription();
   
   const [dayType, setDayType] = useState<'regular' | 'transfer'>('regular');
@@ -1220,6 +1222,8 @@ ${itinerary.length} days | ${new Set(itinerary.map(i => i.destination_id)).size}
         onClose={() => setShowPaywall(false)}
         onPayment={openPaymentPage}
         onActivate={activateSubscription}
+        nationality={nationality}
+        price={price}
       />
       
       {/* Subscription Status Banner */}
