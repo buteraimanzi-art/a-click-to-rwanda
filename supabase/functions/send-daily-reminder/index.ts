@@ -129,10 +129,10 @@ serve(async (req) => {
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
     const isTestMode = FROM_EMAIL.includes("resend.dev");
-    const recipientEmail = isTestMode ? (ADMIN_EMAIL || userEmail) : userEmail;
+    const recipientEmail = isTestMode ? (ADMIN_EMAIL && ADMIN_EMAIL.includes("@") ? ADMIN_EMAIL : userEmail) : userEmail;
 
     if (!recipientEmail) {
-      throw new Error("No recipient email configured. Set ADMIN_EMAIL for testing mode.");
+      throw new Error("No recipient email configured.");
     }
 
     if (isTestMode) {
