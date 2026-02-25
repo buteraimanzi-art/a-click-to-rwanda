@@ -13,6 +13,69 @@ interface DailyReminderRequest {
   userName: string;
 }
 
+const LOGO_URL = "https://nplhsonknhufztsbdyvh.supabase.co/storage/v1/object/public/email-assets/logo.png?v=1";
+
+function buildScheduleCard(item: any): string {
+  let html = '<div class="schedule-card">';
+  html += '<div class="schedule-title">' + (item.isTransfer ? '🚗 Transfer Day' : '📍 ' + item.destination) + '</div>';
+  
+  if (item.hotel) html += '<p>🏨 <strong>Accommodation:</strong> ' + item.hotel + '</p>';
+  if (item.activity) html += '<div class="activity-box"><strong>🎯 Today\'s Activity:</strong><br>' + item.activity + '</div>';
+  
+  html += '<div class="time-grid">';
+  if (item.times.wake) html += '<div class="time-item"><div class="time-label">⏰ Wake Up</div><div class="time-value">' + item.times.wake + '</div></div>';
+  if (item.times.breakfast) html += '<div class="time-item"><div class="time-label">🍳 Breakfast</div><div class="time-value">' + item.times.breakfast + '</div></div>';
+  if (item.times.lunch) html += '<div class="time-item"><div class="time-label">🍽️ Lunch</div><div class="time-value">' + item.times.lunch + '</div></div>';
+  if (item.times.dinner) html += '<div class="time-item"><div class="time-label">🍷 Dinner</div><div class="time-value">' + item.times.dinner + '</div></div>';
+  html += '</div>';
+  
+  if (item.notes) html += '<div class="notes-box">📝 ' + item.notes + '</div>';
+  html += '</div>';
+  return html;
+}
+
+function buildDailyReminderHtml(userName: string, formattedDate: string, scheduleItems: any[]): string {
+  return `<!DOCTYPE html>
+<html><head><style>
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+  .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+  .header { background: linear-gradient(135deg, #145833 0%, #1a7a45 100%); color: white; padding: 30px; text-align: center; }
+  .header img { max-width: 160px; margin-bottom: 12px; }
+  .header h1 { margin: 0 0 8px 0; font-size: 22px; }
+  .header p { margin: 0; opacity: 0.85; font-size: 13px; }
+  .content { padding: 25px; }
+  .greeting { font-size: 16px; color: #333; margin-bottom: 20px; }
+  .schedule-card { background: #f8faf9; border-left: 4px solid #145833; border-radius: 8px; padding: 20px; margin: 15px 0; }
+  .schedule-title { color: #145833; font-size: 18px; font-weight: bold; margin-bottom: 12px; }
+  .time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0; }
+  .time-item { background: white; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #e8f5e9; }
+  .time-label { font-size: 11px; color: #666; margin-bottom: 4px; }
+  .time-value { font-size: 16px; font-weight: bold; color: #145833; }
+  .activity-box { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin: 12px 0; }
+  .notes-box { background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-top: 12px; font-style: italic; }
+  .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #eee; font-size: 12px; }
+  .footer img { max-width: 80px; opacity: 0.7; margin-bottom: 8px; }
+</style></head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="${LOGO_URL}" alt="A Click to Rwanda" />
+      <h1>Good Morning, ${userName}!</h1>
+      <p>${formattedDate}</p>
+    </div>
+    <div class="content">
+      <p class="greeting">Here's your schedule for today's adventure in Rwanda:</p>
+      ${scheduleItems.map(buildScheduleCard).join('')}
+      <p style="margin-top: 20px; text-align: center; color: #666;">Have an amazing day exploring Rwanda! 🌄</p>
+    </div>
+    <div class="footer">
+      <img src="${LOGO_URL}" alt="Logo" />
+      <p>A Click to Rwanda - Your Gateway to the Land of a Thousand Hills</p>
+    </div>
+  </div>
+</body></html>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -144,99 +207,7 @@ serve(async (req) => {
       from: FROM_EMAIL,
       to: [recipientEmail],
       subject: `🌅 Today's Rwanda Adventure - ${formattedDate}`,
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #145833 0%, #1a7a45 100%); color: white; padding: 30px; text-align: center; }
-    .header h1 { margin: 0 0 8px 0; font-size: 24px; }
-    .header p { margin: 0; opacity: 0.9; font-size: 14px; }
-    .content { padding: 25px; }
-    .greeting { font-size: 16px; color: #333; margin-bottom: 20px; }
-    .schedule-card { background: #f8faf9; border-left: 4px solid #145833; border-radius: 8px; padding: 20px; margin: 15px 0; }
-    .schedule-title { color: #145833; font-size: 18px; font-weight: bold; margin-bottom: 12px; }
-    .time-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0; }
-    .time-item { background: white; padding: 10px; border-radius: 6px; text-align: center; }
-    .time-label { font-size: 11px; color: #666; margin-bottom: 4px; }
-    .time-value { font-size: 16px; font-weight: bold; color: #145833; }
-    .activity-box { background: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; padding: 12px; margin: 12px 0; }
-    .notes-box { background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-top: 12px; font-style: italic; }
-    .footer { text-align: center; padding: 20px; color: #666; border-top: 1px solid #eee; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🇷🇼 Good Morning, ${userName}!</h1>
-      <p>${formattedDate}</p>
-    </div>
-    <div class="content">
-      <p class="greeting">Here's your schedule for today's adventure in Rwanda:</p>
-      
-      ${scheduleItems.map((item) => `
-        <div class="schedule-card">
-          <div class="schedule-title">
-            ${item.isTransfer ? '🚗 Transfer Day' : '📍 ' + item.destination}
-          </div>
-          
-          ${item.hotel ? `<p>🏨 <strong>Accommodation:</strong> ${item.hotel}</p>` : ''}
-          
-          ${item.activity ? `
-            <div class="activity-box">
-              <strong>🎯 Today's Activity:</strong><br>
-              ${item.activity}
-            </div>
-          ` : ''}
-          
-          <div class="time-grid">
-            ${item.times.wake ? `
-              <div class="time-item">
-                <div class="time-label">⏰ Wake Up</div>
-                <div class="time-value">${item.times.wake}</div>
-              </div>
-            ` : ''}
-            ${item.times.breakfast ? `
-              <div class="time-item">
-                <div class="time-label">🍳 Breakfast</div>
-                <div class="time-value">${item.times.breakfast}</div>
-              </div>
-            ` : ''}
-            ${item.times.lunch ? `
-              <div class="time-item">
-                <div class="time-label">🍽️ Lunch</div>
-                <div class="time-value">${item.times.lunch}</div>
-              </div>
-            ` : ''}
-            ${item.times.dinner ? `
-              <div class="time-item">
-                <div class="time-label">🍷 Dinner</div>
-                <div class="time-value">${item.times.dinner}</div>
-              </div>
-            ` : ''}
-          </div>
-          
-          ${item.notes ? `
-            <div class="notes-box">
-              📝 ${item.notes}
-            </div>
-          ` : ''}
-        </div>
-      `).join('')}
-      
-      <p style="margin-top: 20px; text-align: center; color: #666;">
-        Have an amazing day exploring Rwanda! 🌄
-      </p>
-    </div>
-    <div class="footer">
-      <p>A Click to Rwanda - Your Gateway to the Land of a Thousand Hills</p>
-    </div>
-  </div>
-</body>
-</html>
-      `,
+      html: buildDailyReminderHtml(userName, formattedDate, scheduleItems),
     });
 
     if (error) {

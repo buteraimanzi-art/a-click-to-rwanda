@@ -148,12 +148,15 @@ const handler = async (req: Request): Promise<Response> => {
            <p>A voice recording is attached to this email.</p>
          </div>` : '';
 
+    const LOGO_URL = "https://nplhsonknhufztsbdyvh.supabase.co/storage/v1/object/public/email-assets/logo.png?v=1";
+
     const emailHtml = `
-      <!DOCTYPE html><html><body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #fef2f2;">
-        <div style="background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="margin: 0; font-size: 28px;">🚨 EMERGENCY SOS ALERT 🚨</h1>
+      <!DOCTYPE html><html><body style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+        <div style="background-color: #dc2626; color: white; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;">
+          <img src="${LOGO_URL}" alt="A Click to Rwanda" style="max-width: 120px; margin-bottom: 10px;" />
+          <h1 style="margin: 0; font-size: 26px;">🚨 EMERGENCY SOS ALERT 🚨</h1>
         </div>
-        <div style="background-color: white; padding: 30px; border: 2px solid #dc2626; border-top: none; border-radius: 0 0 8px 8px;">
+        <div style="background-color: white; padding: 30px; border: 2px solid #dc2626; border-top: none; border-radius: 0 0 12px 12px;">
           <p style="font-size: 18px; color: #dc2626; font-weight: bold; margin-top: 0;">A traveler has activated the emergency SOS button!</p>
           <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h2 style="margin-top: 0; color: #991b1b;">👤 Traveler Information</h2>
@@ -174,6 +177,10 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="margin: 0; font-weight: bold;">⚠️ IMMEDIATE ACTION REQUIRED ⚠️</p>
             <p style="margin: 10px 0 0 0;">Please contact this traveler immediately at <a href="tel:${phoneNumber}" style="color: white; font-weight: bold;">${phoneNumber}</a></p>
           </div>
+        </div>
+        <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+          <img src="${LOGO_URL}" alt="Logo" style="max-width: 60px; opacity: 0.7; margin-bottom: 6px;" />
+          <p>A Click to Rwanda - Emergency Response System</p>
         </div>
       </body></html>`;
 

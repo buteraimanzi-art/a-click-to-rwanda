@@ -111,9 +111,10 @@ serve(async (req) => {
   <style>
     body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
     .container { max-width: 700px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #145833 0%, #1a7a45 100%); color: white; padding: 40px 30px; text-align: center; }
-    .header h1 { margin: 0 0 10px 0; font-size: 28px; }
-    .header p { margin: 0; opacity: 0.9; }
+    .header { background: linear-gradient(135deg, #145833 0%, #1a7a45 100%); color: white; padding: 30px; text-align: center; }
+    .header img { max-width: 160px; margin-bottom: 12px; }
+    .header h1 { margin: 0 0 6px 0; font-size: 24px; letter-spacing: 0.5px; }
+    .header p { margin: 0; opacity: 0.85; font-size: 13px; }
     .content { padding: 30px; }
     .greeting { font-size: 18px; color: #333; margin-bottom: 20px; }
     .package-box { background: #f8faf9; border: 2px solid #145833; border-radius: 12px; padding: 25px; margin: 20px 0; }
@@ -123,13 +124,15 @@ serve(async (req) => {
     .cta-section h3 { margin: 0 0 15px 0; }
     .cta-button { display: inline-block; background: white; color: #145833; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 5px; }
     .footer { text-align: center; padding: 25px; color: #666; border-top: 1px solid #eee; }
+    .footer img { max-width: 80px; opacity: 0.7; margin-bottom: 8px; }
     .footer a { color: #145833; text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🇷🇼 A Click to Rwanda</h1>
+      <img src="https://nplhsonknhufztsbdyvh.supabase.co/storage/v1/object/public/email-assets/logo.png?v=1" alt="A Click to Rwanda" />
+      <h1>A Click to Rwanda</h1>
       <p>Your Gateway to the Land of a Thousand Hills</p>
     </div>
     <div class="content">
@@ -149,6 +152,7 @@ serve(async (req) => {
       </div>
     </div>
     <div class="footer">
+      <img src="https://nplhsonknhufztsbdyvh.supabase.co/storage/v1/object/public/email-assets/logo.png?v=1" alt="Logo" />
       <p>Generated on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       <p><a href="https://aclicktorwanda.com">A Click to Rwanda</a> - Discover Rwanda's Magic</p>
     </div>
