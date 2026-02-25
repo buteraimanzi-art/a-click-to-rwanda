@@ -30,8 +30,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(RESEND_API_KEY);
 
-    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
-    const EMERGENCY_EMAIL = Deno.env.get("EMERGENCY_CONTACT_EMAIL") || ADMIN_EMAIL;
+    const ADMIN_EMAIL = "buteraimanzi@gmail.com";
+    const EMERGENCY_EMAIL = ADMIN_EMAIL;
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Click to Rwanda Emergency <onboarding@resend.dev>";
 
     if (!EMERGENCY_EMAIL) {
