@@ -4,6 +4,12 @@ import { useApp } from '@/contexts/AppContext';
 
 const PAYPAL_PAYMENT_URL = "https://www.paypal.com/ncp/payment/YD6M888AMR5XW";
 
+const PRICING: Record<string, number> = {
+  rwandan: 0,
+  east_african: 10,
+  foreigner: 50,
+};
+
 interface Subscription {
   id: string;
   user_id: string;
@@ -17,6 +23,7 @@ export const useSubscription = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [nationality, setNationality] = useState('foreigner');
 
   const checkSubscription = useCallback(async () => {
     if (!user || !session) {
@@ -26,9 +33,18 @@ export const useSubscription = () => {
       return;
     }
 
-    // Admin check is now handled server-side by manage-subscription edge function
-
     try {
+      // Fetch nationality from profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nationality')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (profile?.nationality) {
+        setNationality(profile.nationality);
+      }
+
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
         body: { action: 'check' }
       });
@@ -53,18 +69,18 @@ export const useSubscription = () => {
   }, [checkSubscription]);
 
   const hasActiveSubscription = isAdmin || subscription?.status === 'active';
+  const price = PRICING[nationality] ?? 50;
 
   const openPaymentPage = () => {
     window.open(PAYPAL_PAYMENT_URL, '_blank');
   };
 
-  // Call this when user confirms they've paid
   const activateSubscription = async (paymentReference: string) => {
     if (!user || !session) return false;
 
     try {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
-        body: { action: 'activate', payment_reference: paymentReference }
+        body: { action: 'activate', payment_reference: paymentReference, nationality, amount: price }
       });
 
       if (error) {
@@ -83,7 +99,6 @@ export const useSubscription = () => {
     }
   };
 
-  // Require subscription for booking actions
   const requireSubscription = (callback: () => void) => {
     if (hasActiveSubscription) {
       callback();
@@ -102,6 +117,8 @@ export const useSubscription = () => {
     requireSubscription,
     showPaywall,
     setShowPaywall,
+    nationality,
+    price,
     PAYPAL_PAYMENT_URL,
   };
 };

@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogIn, UserPlus, Mail, Lock, User } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Lock, User, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import logoImage from '@/assets/logo-click-to-rwanda.png';
+
+const NATIONALITY_OPTIONS = [
+  { value: 'rwandan', label: '🇷🇼 Rwandan Resident', price: 'Free' },
+  { value: 'east_african', label: '🌍 East African', price: '$10/year' },
+  { value: 'foreigner', label: '✈️ International Visitor', price: '$50/year' },
+];
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,6 +20,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [nationality, setNationality] = useState('foreigner');
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -27,15 +34,24 @@ const Login = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { 
             emailRedirectTo: `${window.location.origin}/`,
-            data: { full_name: name }
+            data: { full_name: name, nationality }
           },
         });
         if (error) throw error;
+
+        // Create profile with nationality
+        if (data.user) {
+          await supabase.from('profiles').upsert({
+            user_id: data.user.id,
+            nationality,
+          }, { onConflict: 'user_id' });
+        }
+
         toast.success('Account created! You can now log in.');
         setIsSignUp(false);
       } else {
@@ -83,12 +99,13 @@ const Login = () => {
     }
   };
 
+  const selectedOption = NATIONALITY_OPTIONS.find(o => o.value === nationality);
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-16 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="max-w-4xl w-full bg-card rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row animate-scale-in">
         {/* Illustration Side */}
         <div className="md:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-8 flex flex-col items-center justify-center text-primary-foreground relative overflow-hidden">
-          {/* Animated background circles */}
           <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 animate-pulse" />
           <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/10 rounded-full translate-x-1/4 translate-y-1/4 animate-pulse" style={{ animationDelay: '1s' }} />
           <div className="absolute top-1/2 right-0 w-24 h-24 bg-white/5 rounded-full translate-x-1/2 animate-pulse" style={{ animationDelay: '0.5s' }} />
@@ -106,19 +123,20 @@ const Login = () => {
             Plan your perfect journey through the Land of a Thousand Hills
           </p>
           
-          {/* Feature list */}
-          <ul className="mt-8 space-y-3 text-sm">
-            {['AI-Powered Trip Planning', 'Curated Experiences', 'Local Insights'].map((feature, i) => (
-              <li 
-                key={feature}
-                className="flex items-center gap-2 animate-fade-in"
+          {/* Pricing tiers */}
+          <div className="mt-8 space-y-2 w-full max-w-xs">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-primary-foreground/60 text-center mb-3">Subscription Pricing</h3>
+            {NATIONALITY_OPTIONS.map((opt, i) => (
+              <div 
+                key={opt.value}
+                className="flex items-center justify-between bg-white/10 rounded-lg px-4 py-2 animate-fade-in"
                 style={{ animationDelay: `${0.5 + i * 0.1}s` }}
               >
-                <span className="w-2 h-2 bg-primary-foreground rounded-full" />
-                {feature}
-              </li>
+                <span className="text-sm">{opt.label}</span>
+                <span className="text-sm font-bold">{opt.price}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
         {/* Form Side */}
@@ -130,27 +148,75 @@ const Login = () => {
             {isSignUp ? 'Start your Rwanda adventure today →' : 'Continue your journey →'}
           </p>
 
-          <form onSubmit={handleAuth} className="space-y-5">
+          <form onSubmit={handleAuth} className="space-y-4">
             {isSignUp && (
-              <div 
-                className={`relative animate-fade-in transition-all duration-300 ${focusedField === 'name' ? 'scale-[1.02]' : ''}`}
-                style={{ animationDelay: '0.2s' }}
-              >
-                <User 
-                  size={20} 
-                  className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 ${focusedField === 'name' ? 'text-primary' : 'text-muted-foreground'}`} 
-                />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onFocus={() => setFocusedField('name')}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="What's your name?"
-                  className="w-full pl-12 pr-4 py-4 border-2 border-input rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-all duration-300 focus:shadow-lg focus:shadow-primary/10"
-                  required={isSignUp}
-                />
-              </div>
+              <>
+                <div 
+                  className={`relative animate-fade-in transition-all duration-300 ${focusedField === 'name' ? 'scale-[1.02]' : ''}`}
+                  style={{ animationDelay: '0.2s' }}
+                >
+                  <User 
+                    size={20} 
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 ${focusedField === 'name' ? 'text-primary' : 'text-muted-foreground'}`} 
+                  />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onFocus={() => setFocusedField('name')}
+                    onBlur={() => setFocusedField(null)}
+                    placeholder="What's your name?"
+                    className="w-full pl-12 pr-4 py-4 border-2 border-input rounded-xl bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-all duration-300 focus:shadow-lg focus:shadow-primary/10"
+                    required={isSignUp}
+                  />
+                </div>
+
+                {/* Nationality selector */}
+                <div 
+                  className={`relative animate-fade-in transition-all duration-300 ${focusedField === 'nationality' ? 'scale-[1.02]' : ''}`}
+                  style={{ animationDelay: '0.25s' }}
+                >
+                  <Globe 
+                    size={20} 
+                    className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300 z-10 ${focusedField === 'nationality' ? 'text-primary' : 'text-muted-foreground'}`} 
+                  />
+                  <select
+                    value={nationality}
+                    onChange={(e) => setNationality(e.target.value)}
+                    onFocus={() => setFocusedField('nationality')}
+                    onBlur={() => setFocusedField(null)}
+                    className="w-full pl-12 pr-4 py-4 border-2 border-input rounded-xl bg-background text-foreground focus:border-primary focus:outline-none transition-all duration-300 focus:shadow-lg focus:shadow-primary/10 appearance-none cursor-pointer"
+                    required
+                  >
+                    {NATIONALITY_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label} — {opt.price}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom dropdown arrow */}
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Price badge */}
+                {selectedOption && (
+                  <div className="animate-fade-in text-center">
+                    <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold ${
+                      nationality === 'rwandan' 
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                        : nationality === 'east_african'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    }`}>
+                      Your plan: {selectedOption.price}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
             <div 
@@ -224,7 +290,7 @@ const Login = () => {
 
           {/* Divider */}
           <div 
-            className="flex items-center gap-4 my-6 animate-fade-in"
+            className="flex items-center gap-4 my-5 animate-fade-in"
             style={{ animationDelay: isSignUp ? '0.55s' : '0.45s' }}
           >
             <div className="flex-1 h-px bg-border" />
@@ -266,13 +332,14 @@ const Login = () => {
           </div>
 
           <div 
-            className="mt-6 text-center animate-fade-in"
+            className="mt-5 text-center animate-fade-in"
             style={{ animationDelay: isSignUp ? '0.7s' : '0.6s' }}
           >
             <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setName('');
+                setNationality('foreigner');
               }}
               className="text-primary hover:text-primary/80 font-medium transition-colors duration-300 hover:underline underline-offset-4"
             >
