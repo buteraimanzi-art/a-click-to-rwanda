@@ -89,10 +89,11 @@ serve(async (req) => {
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "";
     const FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "A Click to Rwanda <onboarding@resend.dev>";
     const hasVerifiedDomain = !FROM_EMAIL.includes("resend.dev");
-    const recipientEmail = hasVerifiedDomain ? email : ADMIN_EMAIL;
+    // In test mode (resend.dev), send to ADMIN_EMAIL if valid, otherwise fall back to user's email
+    const recipientEmail = hasVerifiedDomain ? email : (ADMIN_EMAIL && ADMIN_EMAIL.includes("@") ? ADMIN_EMAIL : email);
     
     if (!recipientEmail) {
-      throw new Error("No recipient email configured. Set ADMIN_EMAIL for testing mode or RESEND_FROM_EMAIL with a verified domain.");
+      throw new Error("No recipient email configured.");
     }
 
     console.log(`Sending ${packageType} email to ${recipientEmail} for user ${user.id}${!hasVerifiedDomain ? ' (testing mode - admin only)' : ''}`);
