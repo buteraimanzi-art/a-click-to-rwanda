@@ -88,21 +88,11 @@ const Index = () => {
   return (
     <>
       <section className="relative h-[80vh] flex items-center justify-center text-white text-center overflow-hidden">
-        {/* YouTube Video Background */}
-        <iframe
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          style={{
-            width: '100vw',
-            height: '100vh',
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%) scale(1.5)',
-          }}
-          src="https://www.youtube.com/embed/2p9Qt60W91Q?autoplay=1&mute=1&loop=1&playlist=2p9Qt60W91Q&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1"
-          title="Rwanda Background Video"
-          allow="autoplay; encrypted-media"
-          allowFullScreen
+        {/* Hero Background Image */}
+        <img
+          src={heroImage}
+          alt="Rwanda landscape"
+          className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-black/50" />
         <div className="relative z-10 px-4 max-w-4xl">
