@@ -55,11 +55,15 @@ export const Footer = () => (
           </li>
           <li className="flex items-center space-x-2">
             <Phone size={16} />
-            <span>+250 788 123 456</span>
+            <a href="tel:+250783497581" className="hover:text-accent transition">0783497581</a>
           </li>
           <li className="flex items-center space-x-2">
             <Mail size={16} />
-            <span>info@aclicktorwanda.com</span>
+            <a href="mailto:aclicktorwanda@gmail.com" className="hover:text-accent transition">aclicktorwanda@gmail.com</a>
+          </li>
+          <li className="flex items-center space-x-2">
+            <MapPin size={16} />
+            <a href="https://www.aclicktorwanda.com" target="_blank" rel="noopener noreferrer" className="hover:text-accent transition">www.aclicktorwanda.com</a>
           </li>
         </ul>
       </div>
