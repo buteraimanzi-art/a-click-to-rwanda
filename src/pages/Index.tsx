@@ -229,8 +229,9 @@ const Index = () => {
               <h4 className="text-2xl font-bold text-card-foreground">Annual</h4>
               <p className="text-muted-foreground mt-2 text-sm">Full access to every service</p>
               <div className="mt-6 mb-8">
-                <span className="text-4xl font-bold text-card-foreground">$50</span>
+                <span className="text-4xl font-bold text-card-foreground">5,000 RWF</span>
                 <span className="text-muted-foreground ml-1">/ year</span>
+                <p className="text-xs text-muted-foreground mt-1">≈ $3.4 USD</p>
               </div>
               <ul className="space-y-3 flex-grow">
                 {[
