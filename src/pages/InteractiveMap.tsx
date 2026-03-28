@@ -148,15 +148,21 @@ const InteractiveMap = () => {
 
       const parsed: Restaurant[] = data.elements
         .filter((el: any) => el.tags?.name)
-        .map((el: any) => ({
-          id: el.id,
-          name: el.tags.name,
-          cuisine: el.tags.cuisine || el.tags.amenity === 'cafe' ? 'Café' : el.tags.cuisine || 'Restaurant',
-          distance: haversineDistance(lat, lon, el.lat, el.lon),
-          lat: el.lat,
-          lon: el.lon,
-          description: buildDescription(el.tags),
-        }))
+        .map((el: any) => {
+          let cuisine = el.tags.cuisine?.replace(/;/g, ', ') || '';
+          if (!cuisine) {
+            cuisine = el.tags.amenity === 'cafe' ? 'Café' : el.tags.amenity === 'fast_food' ? 'Fast Food' : 'Restaurant';
+          }
+          return {
+            id: el.id,
+            name: el.tags.name,
+            cuisine,
+            distance: haversineDistance(lat, lon, el.lat, el.lon),
+            lat: el.lat,
+            lon: el.lon,
+            description: buildDescription(el.tags),
+          };
+        })
         .sort((a: Restaurant, b: Restaurant) => a.distance - b.distance)
         .slice(0, 3);
 
