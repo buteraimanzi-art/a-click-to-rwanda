@@ -106,7 +106,7 @@ const InteractiveMap = () => {
 
       // Query Overpass API for nearby restaurants within 5km
       const query = `
-        [out:json][timeout:10];
+        [out:json][timeout:25];
         (
           node["amenity"="restaurant"](around:5000,${lat},${lon});
           node["amenity"="cafe"](around:5000,${lat},${lon});
@@ -115,15 +115,36 @@ const InteractiveMap = () => {
         out body 20;
       `;
 
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: `data=${encodeURIComponent(query)}`,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      });
+      const servers = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+      ];
 
-      if (!res.ok) throw new Error('Failed to fetch restaurants');
+      let data: any = null;
+      for (const server of servers) {
+        try {
+          const controller = new AbortController();
+          const tid = setTimeout(() => controller.abort(), 20000);
+          const res = await fetch(server, {
+            method: 'POST',
+            body: `data=${encodeURIComponent(query)}`,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            signal: controller.signal,
+          });
+          clearTimeout(tid);
+          if (res.ok) {
+            const text = await res.text();
+            if (text.trim().startsWith('{')) {
+              data = JSON.parse(text);
+              break;
+            }
+          }
+        } catch {
+          // Try next server
+        }
+      }
 
-      const data = await res.json();
+      if (!data) throw new Error('Failed to fetch restaurants');
 
       const parsed: Restaurant[] = data.elements
         .filter((el: any) => el.tags?.name)
